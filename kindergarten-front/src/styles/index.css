@@ -1,0 +1,72 @@
+/* src/index.css */
+
+/* 1. Глобальні налаштування (Фон та Шрифт для всього сайту) */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #e3f2fd; /* Ніжний блакитний фон */
+  color: #2c3e50;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 2. Глобальні стилі для кнопок (щоб працювали скрізь) */
+
+/* Рожева кнопка */
+.btn-pink {
+  background-color: #ffcce6;
+  color: #d63384;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 12px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-pink:hover {
+  background-color: #f8b3d6;
+  transform: scale(1.02);
+}
+
+/* Блакитна кнопка "Назад" */
+.back-btn {
+  background-color: #90caf9;
+  color: white;
+  text-decoration: none; /* Щоб посилання виглядало як кнопка */
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  margin-right: 15px;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.back-btn:hover {
+  background-color: #64b5f6;
+}
+
+/* 3. Глобальні стилі для полів вводу (Input) */
+input {
+  background-color: #f0f4f8;
+  border: 1px solid #dbe2e8;
+  padding: 15px;
+  border-radius: 10px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #3498db;
+  background-color: white;
+}

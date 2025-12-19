@@ -1,0 +1,20 @@
+/* src/pages/styles/Login.css */
+
+/* Контейнер, який розтягується на весь екран і центрує вміст */
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Висота на весь екран */
+}
+
+/* Картка входу */
+.login-card {
+  background-color: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 10px 25px rgba(176, 196, 222, 0.3);
+  width: 100%;
+  max-width: 400px; /* Обмеження ширини */
+  text-align: center;
+}
