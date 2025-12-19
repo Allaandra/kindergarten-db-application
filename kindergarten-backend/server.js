@@ -29,9 +29,9 @@ app.post('/api/employees/delete', controller.deleteEmployee);
 app.post('/api/employees/update', controller.updateEmployee);
 
 app.post('/api/children', controller.getChildren);
-//app.post('/api/children/create', controller.createChild);
-//app.post('/api/children/delete', controller.deleteChild);
-//app.post('/api/children/update', controller.updateChild);
+app.post('/api/children/create', controller.createChild);
+app.post('/api/children/delete', controller.deleteChild);
+app.post('/api/children/update', controller.updateChild);
 
 app.post('/api/positions', controller.getPositions);
 app.post('/api/educators', controller.getEducators);

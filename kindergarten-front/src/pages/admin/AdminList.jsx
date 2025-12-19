@@ -3,49 +3,66 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import './styles/Admin.css';
 
-// 1. Додаємо гарну назву для нової колонки
+// КАРТА КОЛОНОК
 const COLUMN_MAP = {
   id: 'ID', 
+  // Групи
   name: 'Назва групи', 
   age_category: 'Категорія', 
-  max_capacity: 'Місць',
+  occupancy: 'Заповненість',
+  educator_name: 'Вихователь',
   
-  educator_name: 'Вихователь', // <--- НОВЕ: Красиве ім'я
-  educator_id: 'ID Вих.',      // Це ми сховаємо, назва не важлива
-  
-  // ... інші поля (first_name, phone тощо) залишаються як були
+  // Співробітники
   first_name: "Ім'я",
   last_name: 'Прізвище',
   patronymic: 'По батькові',
   phone: 'Телефон',
   address: 'Адреса',
   position_name: 'Посада',
-  position_id: 'Посада (ID)',
-  db_username: 'Логін'
+  db_username: 'Логін',
+
+  // ДІТИ
+  birth_date: 'Дата народж.', 
+  birthday_date: 'Дата народж.',
+  group_name: 'Група',
+  
+  // Ці поля залишаємо в таблиці, але поки вони будуть пусті
+  parent_name: 'Батьки',
+  parent_phone: 'Телефон батьків'
 };
 
-// 2. Ховаємо технічні ID, щоб таблиця була чистою
-// Додай сюди 'educator_id'
-const HIDDEN_FIELDS = ['position_id', 'db_username', 'educator_id'];
+// СХОВАНІ ПОЛЯ
+const HIDDEN_FIELDS = [
+    'position_id', 
+    'db_username', 
+    'educator_id', 
+    'max_capacity', 
+    'group_id',
+    'parent_name',
+    'parent_phone'
+];
 
 const AdminList = ({ user, type }) => {
   const [data, setData] = useState([]);
   
-  // Списки для выпадающих меню
+  // Списки для випадаючих меню
   const [educatorsList, setEducatorsList] = useState([]);
-  const [positionsList, setPositionsList] = useState([]); // <--- НОВОЕ: список должностей
+  const [positionsList, setPositionsList] = useState([]); 
+  const [groupsList, setGroupsList] = useState([]); 
 
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Единое состояние для формы (добавили поля сотрудника)
+  // Єдиний стан для форми
   const [formData, setFormData] = useState({
-    // Поля группы
+    // Групи
     name: '', ageCategory: 'Молодша (3-4 роки)', maxCapacity: 20, educatorId: "",
-    // Поля сотрудника
+    // Співробітники
     firstName: '', lastName: '', patronymic: '', 
-    phone: '+380', address: '', positionId: '', dbUsername: '', password: ''
+    phone: '+380', address: '', positionId: '', dbUsername: '', password: '',
+    // Діти (батьків прибрали)
+    birthDate: '', groupId: ""
   });
 
   let pageTitle = '';
@@ -56,13 +73,11 @@ const AdminList = ({ user, type }) => {
     pageTitle = 'Групи'; addButtonText = 'Додати групу'; apiEndpoint = '/api/groups';
   } else if (type === 'employees') {
     pageTitle = 'Співробітники'; addButtonText = 'Додати співробітника'; apiEndpoint = '/api/employees';
-  }else if (type === 'relatives') {
-    pageTitle = 'Родичі'; addButtonText = 'Додати родича'; apiEndpoint = '/api/relatives';
   } else if (type === 'children') {
     pageTitle = 'Діти'; addButtonText = 'Зарахувати дитину'; apiEndpoint = '/api/children';
   }
 
-  // Загрузка данных
+  // Завантаження даних
   const fetchData = async () => {
     if (!type) return;
     setLoading(true);
@@ -75,24 +90,24 @@ const AdminList = ({ user, type }) => {
     finally { setLoading(false); }
   };
 
-  // Загрузка справочников (должности и воспитатели)
+  // Завантаження довідників
   useEffect(() => {
     const fetchHelpers = async () => {
       try {
         const auth = { username: user.username, password: user.password };
         
-        // Если мы в Группах - нужны воспитатели
         if (type === 'groups') {
              const res = await axios.post('http://localhost:3000/api/educators', { auth });
              setEducatorsList(res.data.rows);
         }
-        
-        // Если мы в Сотрудниках - нужны должности
         if (type === 'employees') {
              const res = await axios.post('http://localhost:3000/api/positions', { auth });
              setPositionsList(res.data.rows);
         }
-
+        if (type === 'children') {
+             const res = await axios.post('http://localhost:3000/api/groups', { auth });
+             setGroupsList(res.data.rows);
+        }
       } catch (err) { console.error(err); }
     };
     fetchData();
@@ -100,14 +115,14 @@ const AdminList = ({ user, type }) => {
   }, [type]);
 
   
-  // Підготовка колонок для відображення (фільтруємо сховані)
   const visibleKeys = data.length > 0 
     ? Object.keys(data[0]).filter(key => !HIDDEN_FIELDS.includes(key)) 
     : [];
   
-  // Обработчик открытия окна
+  // ВІДКРИТТЯ РЕДАГУВАННЯ
   const handleEdit = (row) => {
     setEditingId(row.id);
+    
     if (type === 'groups') {
         setFormData({
             name: row.name, ageCategory: row.age_category, 
@@ -120,8 +135,16 @@ const AdminList = ({ user, type }) => {
             patronymic: row.patronymic || '',
             phone: row.phone, 
             address: row.address || '', 
-            positionId: row.position_id, // Беремо прихований ID для форми
-            dbUsername: row.db_username || '' // Беремо прихований логін
+            positionId: row.position_id, 
+            dbUsername: row.db_username || ''
+        });
+    } else if (type === 'children') {
+        setFormData({
+            firstName: row.first_name,
+            lastName: row.last_name,
+            patronymic: row.patronymic || '',
+            birthDate: row.birthday_date ? String(row.birthday_date).substring(0, 10) : '', 
+            groupId: row.group_id || ""
         });
     }
     setModalOpen(true);
@@ -130,11 +153,11 @@ const AdminList = ({ user, type }) => {
   const handleCloseModal = () => {
     setModalOpen(false);
     setEditingId(null);
-    // Сброс формы
     setFormData({
         name: '', ageCategory: 'Молодша (3-4 роки)', maxCapacity: 20, educatorId: "",
         firstName: '', lastName: '', patronymic: '', 
-        phone: '+380', address: '', positionId: '', dbUsername: ''
+        phone: '+380', address: '', positionId: '', dbUsername: '', password: '',
+        birthDate: '', groupId: ""
     });
   };
 
@@ -147,14 +170,13 @@ const AdminList = ({ user, type }) => {
     e.preventDefault();
     let url = '';
     
-    // ЛОГИКА ВЫБОРА URL
     if (type === 'groups') {
         url = editingId ? '/api/groups/update' : '/api/groups/create';
     } else if (type === 'employees') {
         url = editingId ? '/api/employees/update' : '/api/employees/create';
+    } else if (type === 'children') {
+        url = editingId ? '/api/children/update' : '/api/children/create';
     }
-
-    if (!url) { alert('Редагування для співробітників ще в розробці'); return; }
 
     try {
       await axios.post(`http://localhost:3000${url}`, {
@@ -172,25 +194,14 @@ const AdminList = ({ user, type }) => {
     }
   };
 
-const handleDelete = async (id) => {
-      if (!window.confirm('Ви точно хочете видалити цей запис? Це також закриє доступ до системи.')) return;
+  const handleDelete = async (id) => {
+      if (!window.confirm('Ви точно хочете видалити цей запис?')) return;
       
       let deleteEndpoint = '';
+      if (type === 'groups') deleteEndpoint = '/api/groups/delete';
+      else if (type === 'employees') deleteEndpoint = '/api/employees/delete';
+      else if (type === 'children') deleteEndpoint = '/api/children/delete';
       
-      // Вибираємо правильну адресу залежно від того, на якій ми вкладці
-      if (type === 'groups') {
-          deleteEndpoint = '/api/groups/delete';
-      } else if (type === 'employees') {
-          deleteEndpoint = '/api/employees/delete'; // <--- Додали це
-      } else if (type === 'children') {
-          // deleteEndpoint = '/api/children/delete'; // Це зробимо пізніше
-      }
-      
-      if (!deleteEndpoint) {
-          alert('Видалення для цього розділу ще не налаштовано');
-          return;
-      }
-  
       try {
         await axios.post(`http://localhost:3000${deleteEndpoint}`, {
           auth: { username: user.username, password: user.password },
@@ -198,7 +209,7 @@ const handleDelete = async (id) => {
         });
         
         alert('Успішно видалено!');
-        fetchData(); // Оновлюємо таблицю
+        fetchData();
       } catch (err) {
         alert('Помилка: ' + (err.response?.data?.error || err.message));
       }
@@ -206,6 +217,9 @@ const handleDelete = async (id) => {
 
   const formatValue = (val) => {
     if (val === null || val === undefined || val === '') return <span className="null-value">NULL</span>;
+    if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T/)) {
+        return new Date(val).toLocaleDateString('uk-UA');
+    }
     return val;
   };
 
@@ -236,7 +250,6 @@ const handleDelete = async (id) => {
               <tbody>
                 {data.length > 0 ? data.map((row, index) => (
                   <tr key={index}>
-                    {/* Малюємо тільки ВИДИМІ колонки */}
                     {visibleKeys.map((key) => (
                          <td key={key}>{formatValue(row[key])}</td>
                     ))}
@@ -259,14 +272,13 @@ const handleDelete = async (id) => {
             
             <form onSubmit={handleSubmit}>
               
-              {/* === ФОРМА ДЛЯ ГРУПП === */}
+              {/* === ГРУПИ === */}
               {type === 'groups' && (
                 <>
                   <div className="form-group">
                     <label className="form-label">Назва групи</label>
                     <input name="name" required value={formData.name} onChange={handleInputChange} />
                   </div>
-                  {/* ... остальные поля групп (категория, воспитатель, места) ... */}
                    <div className="form-group">
                     <label className="form-label">Вікова категорія</label>
                     <select name="ageCategory" value={formData.ageCategory} onChange={handleInputChange}>
@@ -291,7 +303,7 @@ const handleDelete = async (id) => {
                 </>
               )}
 
-              {/* === НОВОЕ: ФОРМА ДЛЯ СОТРУДНИКОВ === */}
+              {/* === СПІВРОБІТНИКИ === */}
               {type === 'employees' && (
                 <>
                   <div style={{display: 'flex', gap: '10px'}}>
@@ -304,56 +316,77 @@ const handleDelete = async (id) => {
                         <input name="lastName" required value={formData.lastName} onChange={handleInputChange} />
                       </div>
                   </div>
-                  
                   <div className="form-group">
                     <label className="form-label">По батькові</label>
                     <input name="patronymic" value={formData.patronymic} onChange={handleInputChange} />
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Телефон (+380...)</label>
                     <input name="phone" placeholder="+380991234567" required value={formData.phone} onChange={handleInputChange} />
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Посада</label>
                     <select name="positionId" required value={formData.positionId} onChange={handleInputChange}>
                       <option value="">-- Оберіть посаду --</option>
                       {positionsList.map(pos => (
-                        <option key={pos.id} value={pos.id}>
-                            {pos.name} (ID: {pos.id})
-                        </option>
+                        <option key={pos.id} value={pos.id}>{pos.name}</option>
                       ))}
                     </select>
                   </div>
-
                   <div className="form-group">
                     <label className="form-label">Адреса</label>
                     <input name="address" value={formData.address} onChange={handleInputChange} />
                   </div>
-
                   <div className="form-group" style={{background: '#e8f6f3', padding: '10px', borderRadius: '10px'}}>
-                    <label className="form-label" style={{color: '#16a085'}}>🔗 Системний логін (db_username)</label>
-                    <input 
-                        name="dbUsername" 
-                        placeholder="Наприклад: maria_educator" 
-                        required 
-                        value={formData.dbUsername} 
-                        onChange={handleInputChange} 
-                    />
+                    <label className="form-label" style={{color: '#16a085'}}>🔗 Системний логін</label>
+                    <input name="dbUsername" required value={formData.dbUsername} onChange={handleInputChange} />
+                  </div>
+                  <div className="form-group" style={{background: '#e8f6f3', padding: '10px', borderRadius: '10px', marginTop: '10px'}}>
+                    <label className="form-label" style={{color: '#16a085'}}>🔑 Пароль</label>
+                    <input type="password" name="password" placeholder={editingId ? "Залиште пустим, якщо не міняєте" : ""} required={!editingId} value={formData.password || ''} onChange={handleInputChange} />
+                  </div>
+                </>
+              )}
+
+              {/* === ДІТИ (СПРОЩЕНА ТА ГАРНА ФОРМА) === */}
+              {type === 'children' && (
+                <>
+                  {/* Рядок 1: Ім'я та Прізвище поруч */}
+                  <div style={{display: 'flex', gap: '10px'}}>
+                      <div className="form-group" style={{flex: 1}}>
+                        <label className="form-label">Ім'я дитини</label>
+                        <input name="firstName" required value={formData.firstName} onChange={handleInputChange} />
+                      </div>
+                      <div className="form-group" style={{flex: 1}}>
+                        <label className="form-label">Прізвище дитини</label>
+                        <input name="lastName" required value={formData.lastName} onChange={handleInputChange} />
+                      </div>
                   </div>
 
-                  <div className="form-group" style={{background: '#e8f6f3', padding: '10px', borderRadius: '10px', marginTop: '10px'}}>
-                    <label className="form-label" style={{color: '#16a085'}}>🔑 Пароль для входу</label>
-                    <input 
-                        type="password"
-                        name="password" 
-                        placeholder={editingId ? "Залиште пустим, якщо не міняєте" : "Введіть пароль"} 
-                        required={!editingId} // Обов'язковий тільки при створенні
-                        value={formData.password || ''} 
-                        onChange={handleInputChange} 
-                    />
+                  {/* Рядок 2: По батькові */}
+                  <div className="form-group">
+                    <label className="form-label">По батькові дитини</label>
+                    <input name="patronymic" value={formData.patronymic} onChange={handleInputChange} />
                   </div>
+
+                  {/* Рядок 3: Дата народження */}
+                  <div className="form-group">
+                    <label className="form-label">Дата народження</label>
+                    <input type="date" name="birthDate" required value={formData.birthDate} onChange={handleInputChange} />
+                  </div>
+
+                  {/* Рядок 4: Група */}
+                  <div className="form-group">
+                    <label className="form-label">Група</label>
+                    <select name="groupId" value={formData.groupId} onChange={handleInputChange}>
+                      <option value="">-- Не призначено --</option>
+                      {groupsList.map(g => (
+                        <option key={g.id} value={g.id}>{g.name} ({g.occupancy})</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Блок з батьками прибрали, зробимо його пізніше */}
                 </>
               )}
 
