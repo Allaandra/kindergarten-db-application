@@ -28,6 +28,11 @@ app.post('/api/employees/create', controller.createEmployee);
 app.post('/api/employees/delete', controller.deleteEmployee);
 app.post('/api/employees/update', controller.updateEmployee);
 
+app.post('/api/relatives', controller.getRelatives);
+app.post('/api/relatives/create', controller.createRelative);
+app.post('/api/relatives/delete', controller.deleteRelative);
+app.post('/api/relatives/update', controller.updateRelative);
+
 app.post('/api/children', controller.getChildren);
 app.post('/api/children/create', controller.createChild);
 app.post('/api/children/delete', controller.deleteChild);
