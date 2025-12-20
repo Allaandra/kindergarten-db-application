@@ -84,6 +84,8 @@ const AdminList = ({ user, type }) => {
         ...formData, // лишаємо дефолтні значення
         ...row,      // переписуємо тим, що прийшло з бази
         // Специфічні поля (дату обрізаємо, null міняємо на "")
+        firstName: row.first_name || '',
+        lastName: row.last_name || '',
         educatorId: row.educator_id || "",
         ageCategory: row.age_category || formData.ageCategory,
         maxCapacity: row.max_capacity || 20,

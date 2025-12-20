@@ -28,7 +28,7 @@ const RelativeForm = ({ formData, onChange, editingId }) => {
       
       <div className="form-group" style={{background: '#e8f6f3', padding: '10px', borderRadius: '10px'}}>
         <label className="form-label" style={{color: '#16a085'}}>🔗 Системний логін</label>
-        <input name="dbUsername" placeholder="parent_login" required value={formData.dbUsername} onChange={onChange} />
+        <input name="dbUsername" placeholder="Введіть логін" required value={formData.dbUsername} onChange={onChange} />
       </div>
 
       <div className="form-group" style={{background: '#e8f6f3', padding: '10px', borderRadius: '10px', marginTop: '10px'}}>

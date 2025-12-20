@@ -100,12 +100,30 @@ const updateEmployee = async (req, res) => {
     const { auth, id, data } = req.body;
 
     try {
-        // 1. Если пришел пароль - меняем его в БД
-        if (data.password && data.password.trim() !== "") {
-             await executeQuery(auth, `ALTER USER "${data.dbUsername}" WITH PASSWORD '${data.password}'`);
+        // 1. Спочатку дізнаємося СТАРИЙ логін з бази (до змін)
+        const findOldSql = "SELECT db_username FROM employee WHERE id = $1";
+        const oldResult = await executeQuery(auth, findOldSql, [id]);
+        
+        if (oldResult.length === 0) {
+            return res.status(404).json({ error: 'Співробітника не знайдено' });
         }
 
-        // 2. Обновляем данные сотрудника
+        const oldUsername = oldResult[0].db_username;
+        const newUsername = data.dbUsername;
+
+        // 2. Якщо логін змінився — перейменовуємо користувача PostgreSQL
+        if (oldUsername && newUsername && oldUsername !== newUsername) {
+            // ALTER USER "old" RENAME TO "new"
+            await executeQuery(auth, `ALTER USER "${oldUsername}" RENAME TO "${newUsername}"`);
+        }
+
+        // 3. Якщо прийшов новий пароль — міняємо його (вже для НОВОГО логіна)
+        if (data.password && data.password.trim() !== "") {
+             // Використовуємо newUsername, бо ми його щойно могли змінити
+             await executeQuery(auth, `ALTER USER "${newUsername}" WITH PASSWORD '${data.password}'`);
+        }
+
+        // 4. Оновлюємо дані в таблиці (включно з новим логіном)
         const sql = `
             UPDATE employee 
             SET first_name = $1, last_name = $2, patronymic = $3, 
@@ -113,25 +131,33 @@ const updateEmployee = async (req, res) => {
             WHERE id = $8
         `;
 
+        // Очищення полів
         const cleanAddress = (data.address && data.address.trim() !== "") ? data.address : null;
         const cleanPatronymic = (data.patronymic && data.patronymic.trim() !== "") ? data.patronymic : null;
-        await executeQuery(auth, insertSql, [
+
+        await executeQuery(auth, sql, [
             data.firstName, 
             data.lastName, 
             cleanPatronymic,
             data.phone, 
             cleanAddress,
             data.positionId, 
-            data.dbUsername
+            newUsername, // Записуємо новий логін у таблицю
+            id
         ]);
         
-        res.json({ status: 'success', message: 'Дані оновлено' });
+        res.json({ status: 'success', message: 'Дані та логін оновлено' });
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        // Якщо новий логін вже зайнятий кимось іншим
+        if (err.code === '42710' || err.code === '23505') { 
+            res.status(400).json({ error: 'Цей логін вже зайнятий!' });
+        } else {
+            res.status(500).json({ error: err.message });
+        }
     }
 };
-// --- ВИДАЛЕННЯ СПІВРОБІТНИКА ---
+
 const deleteEmployee = async (req, res) => {
     const { auth, id } = req.body;
 
