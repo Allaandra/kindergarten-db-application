@@ -37,7 +37,7 @@ function App() {
     e.preventDefault();
     try {
       // Відправляємо запит на сервер
-      const res = await axios.post('http://localhost:3000/api/login', { username, password });
+      const res = await axios.post('http://localhost:3000/api/auth/login', { username, password });
       
       // Сервер повертає об'єкт { user: { username: '...', role: '...' } }
       // Ми додаємо туди пароль (він треба для запитів до БД) і зберігаємо в стан

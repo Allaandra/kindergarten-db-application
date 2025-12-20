@@ -1,11 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-
-// Импортируем контроллеры
-const controller = require('./src/controllers/mainController');
-
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
@@ -15,31 +12,11 @@ app.use((req, res, next) => {
     next();
 });
 
-// === МАРШРУТЫ ===
-app.post('/api/login', controller.login);
-
-app.post('/api/groups', controller.getGroups);
-app.post('/api/groups/create', controller.createGroup);
-app.post('/api/groups/delete', controller.deleteGroup);
-app.post('/api/groups/update', controller.updateGroup);
-
-app.post('/api/employees', controller.getEmployees);
-app.post('/api/employees/create', controller.createEmployee);
-app.post('/api/employees/delete', controller.deleteEmployee);
-app.post('/api/employees/update', controller.updateEmployee);
-
-app.post('/api/relatives', controller.getRelatives);
-app.post('/api/relatives/create', controller.createRelative);
-app.post('/api/relatives/delete', controller.deleteRelative);
-app.post('/api/relatives/update', controller.updateRelative);
-
-app.post('/api/children', controller.getChildren);
-app.post('/api/children/create', controller.createChild);
-app.post('/api/children/delete', controller.deleteChild);
-app.post('/api/children/update', controller.updateChild);
-
-app.post('/api/positions', controller.getPositions);
-app.post('/api/educators', controller.getEducators);
+app.use('/api/auth', require('./src/routes/authRoutes'));
+app.use('/api/groups', require('./src/routes/groupRoutes'));
+app.use('/api/employees', require('./src/routes/employeeRoutes'));
+app.use('/api/children', require('./src/routes/childRoutes'));
+app.use('/api/relatives', require('./src/routes/relativeRoutes'));
 
 // Запуск
 const PORT = 3000;
