@@ -155,8 +155,6 @@ const AdminList = ({ user, type }) => {
     const action = editingId ? '/update' : '/create';
     const url = `${config.endpoint}${action}`;
 
-    
-
     try {
       await axios.post(`http://localhost:3000${url}`, {
         auth: { username: user.username, password: user.password },
@@ -180,7 +178,7 @@ const AdminList = ({ user, type }) => {
         });
         alert('Видалено!');
         fetchData();
-      } catch (err) { alert('Помилка: ' + err.message); }
+      } catch (err) { alert('Помилка: ' + (err.response?.data?.error || err.message)); }
   };
 
   const handleShowParents = (row) => {

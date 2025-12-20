@@ -100,11 +100,40 @@ const updateRelative = async (req, res) => {
 const deleteRelative = async (req, res) => {
     const { auth, id } = req.body;
     try {
+        // 1. ПЕРЕВІРКА: Чи стане якась дитина "сиротою"?
+        // Цей запит шукає дітей, у яких цей родич є ЄДИНИМ прив'язаним
+        const checkSql = `
+            SELECT c.first_name, c.last_name
+            FROM child_relative cr
+            JOIN child c ON cr.child_id = c.id
+            WHERE cr.child_id IN (
+                -- Знаходимо всіх дітей цього родича
+                SELECT child_id FROM child_relative WHERE relative_id = $1
+            )
+            GROUP BY c.id, c.first_name, c.last_name
+            HAVING COUNT(cr.relative_id) = 1 -- Якщо у дитини всього 1 родич (і це наш)
+        `;
+
+        const orphans = await executeQuery(auth, checkSql, [id]);
+
+        if (orphans.length > 0) {
+            const childNames = orphans.map(o => `${o.first_name} ${o.last_name}`).join(', ');
+            return res.status(400).json({ 
+                error: `Неможливо видалити! Цей родич є єдиним опікуном для: ${childNames}.` 
+            });
+        }
+
+        // 2. Якщо перевірка пройшла успішно — продовжуємо видалення
         const userRes = await executeQuery(auth, "SELECT db_username FROM relative WHERE id = $1", [id]);
         const dbUsername = userRes[0]?.db_username;
 
+        // Спочатку видаляємо зв'язки (хоча каскадне видалення в БД зробило б це саме, але для надійності)
+        await executeQuery(auth, "DELETE FROM child_relative WHERE relative_id = $1", [id]);
+
+        // Видаляємо самого родича
         await executeQuery(auth, "DELETE FROM relative WHERE id = $1", [id]);
 
+        // Видаляємо системного користувача (логін)
         if (dbUsername) {
             await executeQuery(auth, `DROP USER IF EXISTS "${dbUsername}"`);
         }
