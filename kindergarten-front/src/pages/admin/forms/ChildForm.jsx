@@ -64,7 +64,9 @@ const ChildForm = ({ formData, setFormData, onChange, groupsList, relativesList 
         <select name="groupId" value={formData.groupId} onChange={handleSimpleChange}>
           <option value="">-- Не призначено --</option>
           {groupsList.map(g => (
-            <option key={g.id} value={g.id}>{g.name} ({g.occupancy})</option>
+            <option key={g.id} value={g.id}>
+              Група "{g.name}" - {g.age_category} ({g.occupancy})
+            </option>
           ))}
         </select>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './styles/Admin.css';
 
 // Імпортуємо налаштування та форми
@@ -11,6 +11,9 @@ import RelativeForm from './forms/RelativeForm';
 import ChildForm from './forms/ChildForm';
 
 const AdminList = ({ user, type }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -20,6 +23,8 @@ const AdminList = ({ user, type }) => {
   const [groupsList, setGroupsList] = useState([]); 
 
   const [relativesList, setRelativesList] = useState([]);
+
+  const [filterGroupId, setFilterGroupId] = useState(null);
 
   // Стан для модалки
   const [isModalOpen, setModalOpen] = useState(false);
@@ -54,6 +59,16 @@ const AdminList = ({ user, type }) => {
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
+
+  // Ефект: Якщо ми прийшли сюди з "Груп" із фільтром -> активуємо його
+  useEffect(() => {
+    if (location.state?.filterGroupId && type === 'children') {
+      setFilterGroupId(location.state.filterGroupId);
+    } else {
+      // Якщо просто переключили вкладку меню - скидаємо фільтр
+      setFilterGroupId(null);
+    }
+  }, [location.state, type]);
 
   // 2. ЗАВАНТАЖЕННЯ ДОВІДНИКІВ
   useEffect(() => {
@@ -158,7 +173,18 @@ const AdminList = ({ user, type }) => {
     return val;
   };
 
-  const visibleKeys = data.length > 0 ? Object.keys(data[0]).filter(key => !HIDDEN_FIELDS.includes(key)) : [];
+  
+
+  // --- ЛОГІКА ФІЛЬТРАЦІЇ ---
+  // Якщо є фільтр по групі (тільки для дітей) - показуємо лише потрібних
+  const filteredData = (type === 'children' && filterGroupId)
+    ? data.filter(item => item.group_id === filterGroupId)
+    : data;
+
+  // Використовуємо filteredData замість data для визначення колонок
+  const visibleKeys = filteredData.length > 0 
+    ? Object.keys(filteredData[0]).filter(key => !HIDDEN_FIELDS.includes(key)) 
+    : [];
 
   return (
     <div className="admin-page" style={{display: 'block'}}>
@@ -167,6 +193,24 @@ const AdminList = ({ user, type }) => {
           <div style={{display: 'flex', alignItems: 'center', gap: '20px'}}>
             <Link to="/admin" className="back-btn">⬅ Назад</Link>
             <h2 className="page-title">{config?.title}</h2>
+            
+            {/* КНОПКА СКИДАННЯ ФІЛЬТРУ (З'являється тільки якщо ми фільтруємо дітей) */}
+            {filterGroupId && type === 'children' && (
+                <button 
+                    onClick={() => { setFilterGroupId(null); navigate(location.pathname, { state: {} }); }}
+                    style={{
+                        padding: '5px 10px', 
+                        fontSize: '12px', 
+                        background: '#e0f7fa', 
+                        border: '1px solid #00acc1', 
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        color: '#006064'
+                    }}
+                >
+                    ✕ Фільтр: Тільки ця група
+                </button>
+            )}
           </div>
           <button className="btn-pink" onClick={() => { setEditingId(null); setModalOpen(true); }}>
             {config?.btn}
@@ -185,15 +229,45 @@ const AdminList = ({ user, type }) => {
                 </tr>
               </thead>
               <tbody>
-                {data.length > 0 ? data.map((row, index) => (
+                {/* ВАЖЛИВО: Використовуємо filteredData замість data */}
+                {filteredData.length > 0 ? filteredData.map((row, index) => (
                   <tr key={index}>
-                    {visibleKeys.map((key) => <td key={key}>{formatValue(row[key])}</td>)}
+                    {visibleKeys.map((key) => {
+                        // ЛОГІКА КЛІКУ ПО НАЗВІ ГРУПИ
+                        if (type === 'groups' && key === 'name') {
+                            return (
+                                <td key={key}>
+                                    <span 
+                                        onClick={() => navigate('/admin/children', { state: { filterGroupId: row.id } })}
+                                        style={{
+                                            fontWeight: 'bold', 
+                                            color: '#d63384', // Колір посилання
+                                            cursor: 'pointer', 
+                                            textDecoration: 'underline'
+                                        }}
+                                        title="Подивитися дітей цієї групи"
+                                    >
+                                        {formatValue(row[key])}
+                                    </span>
+                                </td>
+                            );
+                        }
+                        // Звичайний вивід
+                        return <td key={key}>{formatValue(row[key])}</td>;
+                    })}
+                    
                     <td style={{textAlign: 'right'}}>
                       <span className="action-link" onClick={() => handleEdit(row)}>Ред.</span>
                       <span className="action-link delete" onClick={() => handleDelete(row.id)}>Вид.</span>
                     </td>
                   </tr>
-                )) : <tr><td colSpan="10" style={{textAlign: 'center'}}>Записів немає</td></tr>}
+                )) : (
+                    <tr>
+                        <td colSpan="10" style={{textAlign: 'center'}}>
+                            {filterGroupId ? 'У цій групі поки немає дітей' : 'Записів немає'}
+                        </td>
+                    </tr>
+                )}
               </tbody>
             </table>
           </div>
