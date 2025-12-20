@@ -206,6 +206,13 @@ select {
   opacity: 0.6;
 }
 
+.hyperlink-table {
+  font-weight: bold; 
+  color: #d63384;
+  cursor: pointer; 
+  text-decoration: underline;
+}
+
 .action-link { color: #d63384; margin-right: 15px; cursor: pointer; font-weight: 600; font-size: 14px; }
 .action-link:hover { text-decoration: underline; }
 .action-link.delete { color: #e74c3c; }

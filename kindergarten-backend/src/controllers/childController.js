@@ -7,7 +7,7 @@ const getChildren = async (req, res) => {
     // Мы добавляем поле relatives_json, чтобы фронтенд мог заполнить форму редактирования
     const sql = `
         SELECT 
-            c.id, c.first_name, c.last_name, c.patronymic, c.birthday_date, c.group_id,
+            c.id, c.last_name, c.first_name, c.patronymic, c.birthday_date, c.group_id,
             g.name AS group_name,
             
             -- Красивая строка для таблицы: "Мама (Иванова), Папа (Петров)"
@@ -27,7 +27,7 @@ const getChildren = async (req, res) => {
 
         FROM child c
         LEFT JOIN kindergarten_group g ON c.group_id = g.id
-        ORDER BY c.last_name
+        ORDER BY c.id
     `;
 
     try {
@@ -41,10 +41,17 @@ const getChildren = async (req, res) => {
 const createChild = async (req, res) => {
     const { auth, data } = req.body;
     const groupId = (data.groupId && data.groupId !== "") ? data.groupId : null;
-    const relatives = data.relatives || [];
+    
+    // Очищаем массив: берем только тех, у кого реально выбран relativeId
+    const relatives = (data.relatives || []).filter(r => r.relativeId && r.relativeId !== "");
+
+    // --- ПЕРЕВІРКА: ЧИ Є БАТЬКИ? ---
+    if (relatives.length === 0) {
+        return res.status(400).json({ error: 'Помилка: У дитини має бути хоча б один опікун/родич!' });
+    }
 
     try {
-        // 1. Создаем ребенка
+        // 1. Створюємо дитину (тільки якщо перевірка пройшла)
         const sqlChild = `
             INSERT INTO child (first_name, last_name, patronymic, birthday_date, group_id)
             VALUES ($1, $2, $3, $4, $5)
@@ -55,9 +62,8 @@ const createChild = async (req, res) => {
         ]);
         const newChildId = childResult[0].id;
 
-        // 2. Добавляем связи
+        // 2. Додаємо зв'язки
         for (const rel of relatives) {
-            if (!rel.relativeId) continue;
             await executeQuery(auth, 
                 "INSERT INTO child_relative (child_id, relative_id, relation_type) VALUES ($1, $2, $3)", 
                 [newChildId, rel.relativeId, rel.type]

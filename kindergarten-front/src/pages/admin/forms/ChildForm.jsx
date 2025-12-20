@@ -113,15 +113,24 @@ const ChildForm = ({ formData, setFormData, onChange, groupsList, relativesList 
                 </select>
             </div>
 
-            {/* Кнопка видалення рядка */}
-            <button 
-                type="button" 
-                onClick={() => removeRelativeRow(index)}
-                style={{background: '#ffdddd', border: 'none', color: 'red', cursor: 'pointer', padding: '0 10px', height: '35px', borderRadius: '4px'}}
-                title="Прибрати"
-            >
-                ✕
-            </button>
+            {index > 0 && (
+                <button 
+                    type="button" 
+                    onClick={() => removeRelativeRow(index)}
+                    style={{
+                        background: '#ffdddd', 
+                        border: 'none', 
+                        color: 'red', 
+                        cursor: 'pointer', 
+                        padding: '0 10px', 
+                        height: '35px', 
+                        borderRadius: '4px'
+                    }}
+                    title="Прибрати"
+                >
+                    ✕
+                </button>
+            )}
         </div>
       ))}
 

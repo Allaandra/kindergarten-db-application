@@ -20,7 +20,8 @@ export const COLUMN_MAP = {
   birthday_date: 'Дата народж.',
   group_name: 'Група',
   parent_name: 'Батьки',
-  parent_phone: 'Телефон батьків'
+  parent_phone: 'Телефон батьків',
+  parents_btn: 'Родичі'
 };
 
 export const HIDDEN_FIELDS = [

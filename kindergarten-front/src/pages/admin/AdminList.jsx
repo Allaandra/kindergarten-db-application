@@ -28,6 +28,7 @@ const AdminList = ({ user, type }) => {
 
   // Стан для модалки
   const [isModalOpen, setModalOpen] = useState(false);
+  const [viewParents, setViewParents] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
   // Єдиний об'єкт для всіх форм (тримаємо тут, передаємо вниз)
@@ -35,6 +36,7 @@ const AdminList = ({ user, type }) => {
     name: '', ageCategory: 'Молодша (3-4 роки)', maxCapacity: 20, educatorId: "",
     firstName: '', lastName: '', patronymic: '', phone: '+380', address: '', 
     positionId: '', dbUsername: '', password: '', birthDate: '', groupId: "",
+
     relatives: [{ relativeId: "", type: "Мати" }]
   });
 
@@ -130,15 +132,30 @@ const AdminList = ({ user, type }) => {
     setFormData({
         name: '', ageCategory: 'Молодша (3-4 роки)', maxCapacity: 20, educatorId: "",
         firstName: '', lastName: '', patronymic: '', phone: '+380', address: '', 
-        positionId: '', dbUsername: '', password: '', birthDate: '', groupId: ""
+        positionId: '', dbUsername: '', password: '', birthDate: '', groupId: "",
+
+        relatives: [{ relativeId: "", type: "Мати" }]
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (type === 'children') {
+        // Проверяем, есть ли в массиве relatives хоть одна запись с заполненным ID
+        const hasParent = formData.relatives && formData.relatives.some(r => r.relativeId && r.relativeId !== "");
+        
+        if (!hasParent) {
+            alert("Помилка: Ви повинні вказати хоча б одного родича або опікуна!");
+            return; // Останавливаем отправку, ничего не происходит
+        }
+    }
+
     // Формуємо URL: /api/groups + /create (або /update)
     const action = editingId ? '/update' : '/create';
     const url = `${config.endpoint}${action}`;
+
+    
 
     try {
       await axios.post(`http://localhost:3000${url}`, {
@@ -166,14 +183,34 @@ const AdminList = ({ user, type }) => {
       } catch (err) { alert('Помилка: ' + err.message); }
   };
 
+  const handleShowParents = (row) => {
+    // row.relatives содержит [{ relativeId: 1, type: 'Мати' }]
+    // relativesList содержит полную инфу о всех родителях [{ id: 1, first_name: '...', phone: '...' }]
+
+    if (!row.relatives || row.relatives.length === 0) {
+        alert("Родичі не вказані");
+        return;
+    }
+
+    // Собираем полную инфу
+    const details = row.relatives.map(link => {
+        // Ищем данные человека в общем списке
+        const person = relativesList.find(r => r.id === link.relativeId);
+        return {
+            ...link, // тут type (Мати)
+            person   // тут имя, телефон и т.д.
+        };
+    });
+
+    setViewParents(details); // Открываем модалку
+};
+
   // Допоміжна функція малювання значень
   const formatValue = (val) => {
     if (val === null || val === undefined || val === '') return <span className="null-value">Не призначено</span>;
     if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T/)) return new Date(val).toLocaleDateString('uk-UA');
     return val;
   };
-
-  
 
   // --- ЛОГІКА ФІЛЬТРАЦІЇ ---
   // Якщо є фільтр по групі (тільки для дітей) - показуємо лише потрібних
@@ -182,9 +219,15 @@ const AdminList = ({ user, type }) => {
     : data;
 
   // Використовуємо filteredData замість data для визначення колонок
-  const visibleKeys = filteredData.length > 0 
+  // 1. Спочатку отримуємо реальні колонки з бази
+  let visibleKeys = filteredData.length > 0 
     ? Object.keys(filteredData[0]).filter(key => !HIDDEN_FIELDS.includes(key)) 
     : [];
+
+  // 2. Якщо це вкладка "Діти" — ПРИМУСОВО додаємо нашу віртуальну колонку
+  if (type === 'children' && !visibleKeys.includes('parents_btn')) {
+      visibleKeys.push('parents_btn');
+  }
 
   return (
     <div className="admin-page" style={{display: 'block'}}>
@@ -239,12 +282,7 @@ const AdminList = ({ user, type }) => {
                                 <td key={key}>
                                     <span 
                                         onClick={() => navigate('/admin/children', { state: { filterGroupId: row.id } })}
-                                        style={{
-                                            fontWeight: 'bold', 
-                                            color: '#d63384', // Колір посилання
-                                            cursor: 'pointer', 
-                                            textDecoration: 'underline'
-                                        }}
+                                        className='hyperlink-table'
                                         title="Подивитися дітей цієї групи"
                                     >
                                         {formatValue(row[key])}
@@ -252,6 +290,33 @@ const AdminList = ({ user, type }) => {
                                 </td>
                             );
                         }
+
+                        if (type === 'children' && key === 'parents_btn') {
+                          const count = row.relatives ? row.relatives.length : 0;
+                          return (
+                              <td key={key} style={{textAlign: 'left'}}>
+                                  {count > 0 ? (
+                                      <button 
+                                          onClick={() => handleShowParents(row)}
+                                          style={{
+                                              padding: '4px 8px',
+                                              background: '#e8f6f3',
+                                              color: '#16a085',
+                                              border: '1px solid #16a085',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontSize: '12px'
+                                          }}
+                                      >
+                                          👁️ Показати ({count})
+                                      </button>
+                                  ) : (
+                                      <span style={{color: '#ccc', fontSize: '12px'}}>NULL</span>
+                                  )}
+                              </td>
+                          );
+                        }
+
                         // Звичайний вивід
                         return <td key={key}>{formatValue(row[key])}</td>;
                     })}
@@ -304,6 +369,65 @@ const AdminList = ({ user, type }) => {
                 <button type="submit" className="btn-pink" style={{width: '100%'}}>Зберегти</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {viewParents && (
+        <div className="modal-overlay" onClick={() => setViewParents(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{maxWidth: '500px'}}>
+            <h3 className="modal-title">Батьки / Опікуни</h3>
+            
+            <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px'}}>
+                {viewParents.map((item, idx) => (
+                    <div key={idx} style={{
+                        padding: '10px', 
+                        border: '1px solid #eee', 
+                        borderRadius: '8px', 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: '#fafafa'
+                    }}>
+                        <div>
+                            {/* Тип связи жирным (Мати, Батько) */}
+                            <div style={{fontWeight: 'bold', color: '#d63384', fontSize: '14px'}}>
+                                {item.type}
+                            </div>
+                            
+                            {/* Имя родителя (проверка, вдруг родителя удалили из базы) */}
+                            <div style={{fontSize: '16px', margin: '2px 0'}}>
+                                {item.person 
+                                    ? `${item.person.last_name} ${item.person.first_name} ${item.person.patronymic}` 
+                                    : <span style={{color:'red'}}>Дані родича видалено</span>
+                                }
+                            </div>
+                            
+                            {/* Адрес, если есть */}
+                            {item.person?.address && (
+                                <div style={{fontSize: '12px', color: '#666'}}>🏠 {item.person.address}</div>
+                            )}
+                        </div>
+
+                        {/* Телефон крупно */}
+                        <div style={{textAlign: 'right'}}>
+                            <div style={{fontWeight: 'bold', fontSize: '14px'}}>
+                                {item.person?.phone || '-'}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="modal-actions" style={{marginTop: '20px'}}>
+                <button 
+                    className="btn-pink" 
+                    onClick={() => setViewParents(null)} 
+                    style={{width: '100%'}}
+                >
+                    Закрити
+                </button>
+            </div>
           </div>
         </div>
       )}
