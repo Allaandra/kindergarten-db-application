@@ -29,5 +29,6 @@ export const HIDDEN_FIELDS = [
     'max_capacity', 
     'group_id',
     'parent_name',
-    'parent_phone'
+    'parent_phone',
+    'relatives',
 ];

@@ -19,6 +19,8 @@ const AdminList = ({ user, type }) => {
   const [positionsList, setPositionsList] = useState([]); 
   const [groupsList, setGroupsList] = useState([]); 
 
+  const [relativesList, setRelativesList] = useState([]);
+
   // Стан для модалки
   const [isModalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -27,7 +29,8 @@ const AdminList = ({ user, type }) => {
   const [formData, setFormData] = useState({
     name: '', ageCategory: 'Молодша (3-4 роки)', maxCapacity: 20, educatorId: "",
     firstName: '', lastName: '', patronymic: '', phone: '+380', address: '', 
-    positionId: '', dbUsername: '', password: '', birthDate: '', groupId: ""
+    positionId: '', dbUsername: '', password: '', birthDate: '', groupId: "",
+    relatives: [{ relativeId: "", type: "Мати" }]
   });
 
   // --- НАЛАШТУВАННЯ СТОРІНКИ ЗАЛЕЖНО ВІД ТИПУ ---
@@ -67,8 +70,13 @@ const AdminList = ({ user, type }) => {
              setPositionsList(res.data.rows);
         }
         if (type === 'children') {
-             const res = await axios.post('http://localhost:3000/api/groups', { auth });
-             setGroupsList(res.data.rows);
+             // Вантажимо групи
+             const resGroups = await axios.post('http://localhost:3000/api/groups', { auth });
+             setGroupsList(resGroups.data.rows);
+
+             // НОВЕ: Вантажимо родичів (використовуємо той самий endpoint, що і для таблиці батьків)
+             const resRelatives = await axios.post('http://localhost:3000/api/relatives', { auth });
+             setRelativesList(resRelatives.data.rows);
         }
       } catch (err) { console.error(err); }
     };
@@ -93,6 +101,9 @@ const AdminList = ({ user, type }) => {
         dbUsername: row.db_username || "",
         groupId: row.group_id || "",
         birthDate: row.birthday_date ? String(row.birthday_date).substring(0, 10) : '',
+        relatives: (row.relatives && row.relatives.length > 0) 
+            ? row.relatives 
+            : [{ relativeId: "", type: "Мати" }]
     });
     setModalOpen(true);
   };
@@ -206,9 +217,14 @@ const AdminList = ({ user, type }) => {
                   <RelativeForm formData={formData} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} editingId={editingId} />
               )}
               {type === 'children' && (
-                  <ChildForm formData={formData} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} groupsList={groupsList} />
+                  <ChildForm 
+                      formData={formData} 
+                      setFormData={setFormData} 
+                      onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} 
+                      groupsList={groupsList} 
+                      relativesList={relativesList}
+                  />
               )}
-
               <div className="modal-actions">
                 <button type="button" className="btn-cancel" onClick={handleCloseModal}>Скасувати</button>
                 <button type="submit" className="btn-pink" style={{width: '100%'}}>Зберегти</button>

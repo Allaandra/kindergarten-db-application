@@ -125,7 +125,7 @@ function App() {
                   <div style={{marginBottom: '5px', color: '#666', fontSize: '14px', marginTop: '15px'}}>Пароль</div>
                   <input 
                     type="password" 
-                    placeholder="••••••••" 
+                    placeholder="Введіть пароль" 
                     value={password} 
                     onChange={e => setPassword(e.target.value)} 
                     required

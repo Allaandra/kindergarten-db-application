@@ -4,91 +4,108 @@ const { mapUserDTO, mapListDTO } = require('../dto/mappers');
 const getChildren = async (req, res) => {
     const { auth } = req.body;
     
-    // Запит залишаємо той самий, щоб таблиця не ламалася.
-    // Просто у нових дітей поля parent_name та parent_phone будуть NULL.
+    // Мы добавляем поле relatives_json, чтобы фронтенд мог заполнить форму редактирования
     const sql = `
         SELECT 
-            c.id,
-            c.last_name,
-            c.first_name,
-            c.patronymic,
-            c.birthday_date,
-            c.group_id,
+            c.id, c.first_name, c.last_name, c.patronymic, c.birthday_date, c.group_id,
             g.name AS group_name,
             
-            -- Підзапити залишаємо, вони просто повернуть NULL, якщо батьків немає
-            (SELECT CONCAT(r.last_name, ' ', r.first_name, ' ', r.patronymic)
-             FROM child_relative cr
-             JOIN relative r ON cr.relative_id = r.id
-             WHERE cr.child_id = c.id
-             LIMIT 1) AS parent_name,
+            -- Красивая строка для таблицы: "Мама (Иванова), Папа (Петров)"
+            (
+                SELECT STRING_AGG(CONCAT(r.last_name, ' ', SUBSTRING(r.first_name, 1, 1), '.', ' (', cr.relation_type, ')'), ', ')
+                FROM child_relative cr
+                JOIN relative r ON cr.relative_id = r.id
+                WHERE cr.child_id = c.id
+            ) AS parent_name,
 
-            (SELECT r.phone
-             FROM child_relative cr
-             JOIN relative r ON cr.relative_id = r.id
-             WHERE cr.child_id = c.id
-             LIMIT 1) AS parent_phone
+            -- ВАЖНО: Сырой массив JSON для формы редактирования: [{ relativeId: 1, type: 'Мати' }]
+            (
+                SELECT COALESCE(json_agg(json_build_object('relativeId', cr.relative_id, 'type', cr.relation_type)), '[]')
+                FROM child_relative cr
+                WHERE cr.child_id = c.id
+            ) AS relatives
 
         FROM child c
         LEFT JOIN kindergarten_group g ON c.group_id = g.id
-        ORDER BY c.id
+        ORDER BY c.last_name
     `;
 
     try {
         const rows = await executeQuery(auth, sql);
-        res.json(mapListDTO(rows));
+        res.json({ rows }); 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };
 
-// --- СТВОРЕННЯ ДИТИНИ (ТІЛЬКИ ДИТИНА) ---
 const createChild = async (req, res) => {
     const { auth, data } = req.body;
-
-    // Якщо група не вибрана -> NULL
     const groupId = (data.groupId && data.groupId !== "") ? data.groupId : null;
-
-    // SQL запит тільки в таблицю child
-    const sql = `
-        INSERT INTO child (first_name, last_name, patronymic, birthday_date, group_id)
-        VALUES ($1, $2, $3, $4, $5)
-    `;
+    const relatives = data.relatives || [];
 
     try {
-        await executeQuery(auth, sql, [
-            data.firstName,
-            data.lastName,
-            data.patronymic || null,
-            data.birthDate,
-            groupId
+        // 1. Создаем ребенка
+        const sqlChild = `
+            INSERT INTO child (first_name, last_name, patronymic, birthday_date, group_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id
+        `;
+        const childResult = await executeQuery(auth, sqlChild, [
+            data.firstName, data.lastName, data.patronymic, data.birthDate, groupId
         ]);
-        
-        res.json({ status: 'success', message: 'Дитину успішно створено!' });
+        const newChildId = childResult[0].id;
+
+        // 2. Добавляем связи
+        for (const rel of relatives) {
+            if (!rel.relativeId) continue;
+            await executeQuery(auth, 
+                "INSERT INTO child_relative (child_id, relative_id, relation_type) VALUES ($1, $2, $3)", 
+                [newChildId, rel.relativeId, rel.type]
+            );
+        }
+
+        res.json({ status: 'success', message: 'Дитину створено!' });
     } catch (err) {
-        console.error("Create child error:", err);
-        res.status(500).json({ error: "Помилка бази даних: " + err.message });
+        res.status(500).json({ error: err.message });
     }
 };
 
-// --- ОНОВЛЕННЯ ДИТИНИ ---
+// --- ВОТ ТУТ МЫ ЧИНИМ ОБНОВЛЕНИЕ ---
 const updateChild = async (req, res) => {
     const { auth, id, data } = req.body;
     const groupId = (data.groupId && data.groupId !== "") ? data.groupId : null;
-
-    const sql = `
-        UPDATE child
-        SET first_name = $1, last_name = $2, patronymic = $3, 
-            birthday_date = $4, group_id = $5
-        WHERE id = $6
-    `;
+    const relatives = data.relatives || [];
 
     try {
+        // 1. Обновляем самого ребенка
+        const sql = `
+            UPDATE child
+            SET first_name = $1, last_name = $2, patronymic = $3, 
+                birthday_date = $4, group_id = $5
+            WHERE id = $6
+        `;
         await executeQuery(auth, sql, [
             data.firstName, data.lastName, data.patronymic,
             data.birthDate, groupId, id
         ]);
-        res.json({ status: 'success', message: 'Дані дитини оновлено' });
+
+        // 2. Обновляем связи (Самый простой способ: Удалить все старые -> Записать новые)
+        
+        // А) Удаляем старые связи для этого ребенка
+        await executeQuery(auth, "DELETE FROM child_relative WHERE child_id = $1", [id]);
+
+        // Б) Записываем новые (те, что пришли с формы)
+        for (const rel of relatives) {
+            // Пропускаем пустые строки или если не выбрали родича
+            if (!rel.relativeId) continue;
+
+            await executeQuery(auth, 
+                "INSERT INTO child_relative (child_id, relative_id, relation_type) VALUES ($1, $2, $3)", 
+                [id, rel.relativeId, rel.type]
+            );
+        }
+
+        res.json({ status: 'success', message: 'Дані та родичів оновлено' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
