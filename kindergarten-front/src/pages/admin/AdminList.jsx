@@ -240,7 +240,10 @@ const AdminList = ({ user, type }) => {
         {/* ШАПКА */}
         <div className="list-header" style={{flexWrap: 'wrap', gap: '15px'}}>
           <div style={{display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap'}}>
-            <Link to="/admin" className="back-btn">⬅ Назад</Link>
+            <Link 
+                to={user.role === 'role_nurse' ? "/nurse" : "/admin"} 
+                className="back-btn"
+            >⬅ Назад</Link>
             <h2 className="page-title">{config?.title}</h2>
             
             {/* ФИЛЬТРЫ ЖУРНАЛА */}

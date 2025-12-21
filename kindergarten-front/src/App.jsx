@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/admin/Dashboard';
 import AdminList from './pages/admin/AdminList';
 import EducatorDashboard from './pages/educator/EducatorDashboard';
+import NurseDashboard from './pages/nurse/NurseDashboard';
 
 // Імпорт стилів
 import './pages/admin/styles/Admin.css';
@@ -62,19 +63,24 @@ function App() {
   // --- КОМПОНЕНТ ЗАХИСТУ РОУТІВ ---
   // --- КОМПОНЕНТ ЗАХИСТУ РОУТІВ ---
   const ProtectedRoute = ({ children }) => {
-    if (!user) {
-        return <Navigate to="/" replace />;
+    if (!user) return <Navigate to="/" replace />;
+
+    // Вихователь
+    if (user.role === 'role_educator') {
+       if (window.location.pathname.startsWith('/nurse') || window.location.pathname.startsWith('/admin')) {
+          return <div>⛔ Доступ заборонено</div>;
+       }
+       return children;
     }
 
-    // --- ЛОГІКА ДЛЯ ВИХОВАТЕЛЯ ---
-    if (user.role === 'role_educator') {
-       // Якщо вихователь лізе в Адмінку (шлях починається на /admin) -> БЛОКУЄМО
-       if (window.location.pathname.startsWith('/admin')) {
-          return <div style={{padding: 50, textAlign: 'center'}}>⛔ Вам сюди не можна!</div>;
-       }
-       // Якщо він іде на свої сторінки (/educator...) -> ПРОПУСКАЄМО
-       // (render children дозволить React побачити твій type="groups")
-       return children; 
+    // Медсестра
+    if (user.role === 'role_nurse') {
+        // Медсестрі можна в /nurse, /admin/menu, /admin/dishes
+        const path = window.location.pathname;
+        if (path.startsWith('/nurse') || path === '/admin/menu' || path === '/admin/dishes') {
+            return children;
+        }
+        return <div>⛔ Тільки для Адміністратора</div>;
     }
 
     // --- ЛОГІКА ДЛЯ АДМІНІВ ---
@@ -106,10 +112,14 @@ function App() {
         {/* 1. РОЗУМНА ПЕРЕАДРЕСАЦІЯ ПРИ ВХОДІ */}
         <Route path="/" element={
           user ? (
-             // Якщо це вихователь -> йдемо на /educator, якщо адмін -> на /admin
-             user.role === 'role_educator' 
-                ? <Navigate to="/educator" replace /> 
-                : <Navigate to="/admin" replace />
+            // Если воспитатель -> /educator
+            user.role === 'role_educator' ? <Navigate to="/educator" replace /> :
+            
+            // 👇 ДОБАВИЛИ ЭТУ ПРОВЕРКУ: Если медсестра -> /nurse
+            user.role === 'role_nurse' ? <Navigate to="/nurse" replace /> :
+            
+            // Иначе (админ) -> /admin
+            <Navigate to="/admin" replace />
           ) : (
             <div className="login-page">
                {/* ... твій код форми входу (без змін) ... */}
@@ -188,6 +198,16 @@ function App() {
                 <EducatorDashboard user={user} onLogout={handleLogout} type="schedule" />
             </ProtectedRoute>
         } />
+
+        {/* Головна медсестри */}
+        <Route path="/nurse" element={<ProtectedRoute><NurseDashboard user={user} onLogout={handleLogout} type="menu" /></ProtectedRoute>} />
+        
+        {/* Медичні карти */}
+        <Route path="/nurse/medical" element={<ProtectedRoute><NurseDashboard user={user} onLogout={handleLogout} type="medical" /></ProtectedRoute>} />
+
+        {/* ПЕРЕВИКОРИСТАННЯ АДМІНСЬКИХ СТОРІНОК ДЛЯ МЕДСЕСТРИ */}
+        <Route path="/nurse/menu" element={<ProtectedRoute><AdminList user={user} type="menu" /></ProtectedRoute>} />
+        <Route path="/nurse/dishes" element={<ProtectedRoute><AdminList user={user} type="dishes" /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" />} />
 

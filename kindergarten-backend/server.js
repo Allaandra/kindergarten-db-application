@@ -24,6 +24,8 @@ app.use('/api/attendance', require('./src/routes/attendanceRoutes'));
 
 app.use('/api/educator', require('./src/routes/educatorRoutes'));
 
+app.use('/api/nurse', require('./src/routes/nurseRoutes'));
+
 // Запуск
 const PORT = 3000;
 app.listen(PORT, () => {

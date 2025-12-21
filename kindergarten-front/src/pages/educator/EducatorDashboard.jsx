@@ -18,7 +18,7 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
   useEffect(() => {
     const fetchData = async () => {
         if (type === 'menu') return;
-
+        setData([]);
         setLoading(true);
         try {
             let url = '';
@@ -259,7 +259,8 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
                             {data.map((row, idx) => (
                                 <tr key={idx}>
                                     <td><b>{row.day_of_week}</b></td>
-                                    <td>{row.time_start.substring(0, 5)}</td>
+                                    {/* 👇 ОСЬ ЦЕЙ РЯДОК МИ ВИПРАВИЛИ 👇 */}
+                                    <td>{row.time_start ? row.time_start.substring(0, 5) : '-'}</td>
                                     <td>{row.activity_name}</td>
                                     <td>{row.group_name}</td>
                                 </tr>
