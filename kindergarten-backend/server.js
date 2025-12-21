@@ -18,6 +18,8 @@ app.use('/api/employees', require('./src/routes/employeeRoutes'));
 app.use('/api/children', require('./src/routes/childRoutes'));
 app.use('/api/relatives', require('./src/routes/relativeRoutes'));
 
+app.use('/api/educator', require('./src/routes/educatorRoutes'));
+
 // Запуск
 const PORT = 3000;
 app.listen(PORT, () => {
