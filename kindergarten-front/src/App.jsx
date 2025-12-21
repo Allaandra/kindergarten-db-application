@@ -165,6 +165,7 @@ function App() {
         <Route path="/admin/schedule" element={<ProtectedRoute><AdminList user={user} type="schedule" /></ProtectedRoute>} />
         <Route path="/admin/dishes" element={<ProtectedRoute><AdminList user={user} type="dishes" /></ProtectedRoute>} />
         <Route path="/admin/menu" element={<ProtectedRoute><AdminList user={user} type="menu" /></ProtectedRoute>} />
+        <Route path="/admin/attendance" element={<ProtectedRoute><AdminList user={user} type="attendance" /></ProtectedRoute>} />
         
 
         {/* Список груп */}
