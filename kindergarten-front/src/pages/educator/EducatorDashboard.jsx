@@ -9,6 +9,9 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
   const [data, setData] = useState([]); 
   const [loading, setLoading] = useState(false);
   
+  // Стейт для відкриття вікна з батьками
+  const [viewParents, setViewParents] = useState(null);
+  
   const auth = { username: user.username, password: user.password };
 
   // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
@@ -33,7 +36,6 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
             }
 
             if (!url) {
-                console.warn(`Увага! Невідомий type: ${type}. Запит скасовано.`);
                 setLoading(false);
                 return;
             }
@@ -47,7 +49,9 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
                 const mapped = res.data.children.map(c => ({
                     ...c,
                     status: c.current_status || 'Присутній',
-                    reason: c.current_reason || ''
+                    reason: c.current_reason || '',
+                    // Важливо: якщо relatives прийде null, замінимо на порожній масив []
+                    relatives: c.relatives || [] 
                 }));
                 setData(mapped);
             } 
@@ -57,8 +61,9 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
 
         } catch (err) {
             console.error("Помилка запиту:", err);
-            if (err.response) {
-                alert(`Помилка сервера: ${err.response.data.error || err.message}`);
+            // Не показуємо алерт, якщо це просто скасування
+            if (err.name !== "CanceledError" && err.response) {
+                 alert(`Помилка: ${err.response.data.error || err.message}`);
             }
         } finally {
             setLoading(false);
@@ -107,8 +112,6 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
           boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
           borderBottom: '1px solid #eee'
       }}>
-          
-          {/* ЛІВОРУЧ: Заголовок */}
           <h2 style={{
               margin: 0, 
               color: '#34495e', 
@@ -123,7 +126,6 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
               {type === 'schedule' && '📅 Мій Розклад'}
           </h2>
 
-          {/* ПРАВОРУЧ: Кнопки (ОНОВЛЕНО) */}
           <div>
             {type === 'menu' ? (
                 <button 
@@ -135,11 +137,7 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
                     Вийти
                 </button>
             ) : (
-                // 👇 ТУТ ЗМІНА: Визначаємо куди повертатись
-                <Link 
-                    to={type === 'attendance' ? "/educator/groups" : "/educator"} 
-                    className="back-btn"
-                >
+                <Link to={type === 'attendance' ? "/educator/groups" : "/educator"} className="back-btn">
                     {type === 'attendance' ? '⬅ До списку груп' : '⬅ На головну'}
                 </Link>
             )}
@@ -200,10 +198,27 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
                         <div key={child.id} style={{
                             background: 'white', borderRadius: '15px', padding: '20px', 
                             boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                            borderLeft: `8px solid ${child.status === 'Присутній' ? '#4caf50' : '#f44336'}`
+                            borderLeft: `8px solid ${child.status === 'Присутній' ? '#4caf50' : '#f44336'}`,
+                            position: 'relative'
                         }}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-                                <div style={{fontWeight: 'bold', fontSize: '18px'}}>{child.last_name} {child.first_name}</div>
+                                
+                                {/* БЛОК ІМ'Я + КНОПКА БАТЬКІВ */}
+                                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                    <div style={{fontWeight: 'bold', fontSize: '18px'}}>
+                                        {child.last_name} {child.first_name}
+                                    </div>
+                                    <button 
+                                        onClick={() => setViewParents(child.relatives)}
+                                        title="Показати контакти батьків"
+                                        style={{
+                                            background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '0 5px'
+                                        }}
+                                    >
+                                        (👁️)
+                                    </button>
+                                </div>
+
                                 <button onClick={() => toggleStatus(child.id)} style={{
                                     padding: '8px 15px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontWeight: 'bold', color: 'white',
                                     background: child.status === 'Присутній' ? '#4caf50' : '#f44336',
@@ -256,6 +271,51 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
         )}
 
       </div>
+
+      {/* --- МОДАЛКА БАТЬКІВ --- */}
+      {viewParents && (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }} onClick={() => setViewParents(null)}>
+          <div style={{
+              background: 'white', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '500px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+          }} onClick={e => e.stopPropagation()}>
+            
+            <h3 style={{marginTop: 0, color: '#34495e', borderBottom: '2px solid #3498db', paddingBottom: '10px'}}>
+                👨‍👩‍👧 Контакти батьків
+            </h3>
+            
+            <div style={{display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '60vh', overflowY: 'auto'}}>
+                {viewParents.length === 0 ? <p style={{color: '#777'}}>Інформація відсутня</p> : viewParents.map((parent, idx) => (
+                    <div key={idx} style={{
+                        padding: '15px', border: '1px solid #eee', borderRadius: '10px', background: '#fafafa'
+                    }}>
+                        <div style={{fontWeight: 'bold', color: '#d63384', marginBottom: '5px'}}>
+                            {parent.type}
+                        </div>
+                        <div style={{fontSize: '18px', marginBottom: '5px'}}>
+                            {parent.name}
+                        </div>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '10px', color: '#333'}}>
+                            📞 {parent.phone}
+                        </div>
+                        {parent.address && <div style={{fontSize: '13px', color: '#666', marginTop: '5px'}}>🏠 {parent.address}</div>}
+                    </div>
+                ))}
+            </div>
+
+            <button onClick={() => setViewParents(null)} style={{
+                marginTop: '20px', width: '100%', padding: '12px', background: '#ff5252', color: 'white',
+                border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px'
+            }}>
+                Закрити
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -13,7 +13,6 @@ const getMyGroups = async (req, res) => {
         `;
         const groups = await executeQuery(auth, sql, [auth.username]);
         
-        // Повертаємо також ім'я вихователя для красивого привітання
         const nameSql = `SELECT first_name, last_name FROM employee WHERE db_username = $1`;
         const userRes = await executeQuery(auth, nameSql, [auth.username]);
         
@@ -26,7 +25,7 @@ const getMyGroups = async (req, res) => {
     }
 };
 
-// 2. Отримати дітей КОНКРЕТНОЇ групи + їхній статус на сьогодні
+// 2. Отримати дітей КОНКРЕТНОЇ групи + їхній статус + БАТЬКІВ
 const getGroupChildren = async (req, res) => {
     const { auth, groupId } = req.body;
     try {
@@ -34,7 +33,18 @@ const getGroupChildren = async (req, res) => {
             SELECT 
                 c.id, c.first_name, c.last_name, 
                 a.status AS current_status, 
-                a.reason AS current_reason
+                a.reason AS current_reason,
+                (
+                    SELECT json_agg(json_build_object(
+                        'type', cr.relation_type,
+                        'name', r.first_name || ' ' || r.last_name || ' ' || r.patronymic,
+                        'phone', r.phone,
+                        'address', r.address
+                    ))
+                    FROM child_relative cr
+                    JOIN relative r ON cr.relative_id = r.id
+                    WHERE cr.child_id = c.id
+                ) AS relatives
             FROM child c
             LEFT JOIN attendance a ON c.id = a.child_id AND a.date = CURRENT_DATE
             WHERE c.group_id = $1
@@ -47,7 +57,7 @@ const getGroupChildren = async (req, res) => {
     }
 };
 
-// 3. Зберегти табель (без змін)
+// 3. Зберегти табель
 const saveAttendance = async (req, res) => {
     const { auth, attendanceData } = req.body; 
     try {
@@ -66,11 +76,10 @@ const saveAttendance = async (req, res) => {
     }
 };
 
-// 4. Отримати розклад (навіть якщо таблиця пуста, помилки не буде)
+// 4. Отримати розклад (ОСЬ ВІН, ВІН МАЄ БУТИ ТУТ!)
 const getSchedule = async (req, res) => {
     const { auth } = req.body;
     try {
-        // Отримуємо розклад для груп цього вихователя
         const sql = `
             SELECT s.day_of_week, s.time_start, a.name as activity_name, g.name as group_name
             FROM schedule s
@@ -95,4 +104,5 @@ const getSchedule = async (req, res) => {
     }
 };
 
+// 👇 ПЕРЕВІР, ЩО ТУТ Є getSchedule
 module.exports = { getMyGroups, getGroupChildren, saveAttendance, getSchedule };
