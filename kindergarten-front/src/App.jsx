@@ -163,6 +163,9 @@ function App() {
         <Route path="/admin/relatives" element={<ProtectedRoute><AdminList user={user} type="relatives" /></ProtectedRoute>} />
         <Route path="/admin/children" element={<ProtectedRoute><AdminList user={user} type="children" /></ProtectedRoute>} />
         <Route path="/admin/schedule" element={<ProtectedRoute><AdminList user={user} type="schedule" /></ProtectedRoute>} />
+        <Route path="/admin/dishes" element={<ProtectedRoute><AdminList user={user} type="dishes" /></ProtectedRoute>} />
+        <Route path="/admin/menu" element={<ProtectedRoute><AdminList user={user} type="menu" /></ProtectedRoute>} />
+        
 
         {/* Список груп */}
         <Route path="/educator/groups" element={

@@ -42,7 +42,18 @@
   width: 100%;
 }
 .section-title { font-size: 20px; color: #7f8c8d; margin-bottom: 40px; font-weight: 600; }
-.dashboard-grid { display: flex; justify-content: center; gap: 40px; }
+.dashboard-grid { 
+  display: flex; 
+  justify-content: center; 
+  gap: 40px; 
+  
+  /* 👇 ЦЕ ГОЛОВНЕ ВИПРАВЛЕННЯ 👇 */
+  flex-wrap: wrap; 
+  
+  /* Додатково: обмежимо ширину блоку, щоб картки не розліталися занадто сильно на великих екранах */
+  max-width: 1400px; 
+  margin: 0 auto; /* Центруємо сам блок сітки */
+}
 .dashboard-card { background: white; width: 260px; padding: 40px 20px; border-radius: 25px; text-align: center; text-decoration: none; color: #2c3e50; box-shadow: 0 15px 30px rgba(176, 196, 222, 0.4); transition: transform 0.3s, box-shadow 0.3s; border: 3px solid transparent; }
 .dashboard-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(255, 204, 230, 0.8); border-color: #ffcce6; }
 .card-icon { font-size: 50px; margin-bottom: 20px; display: block; }

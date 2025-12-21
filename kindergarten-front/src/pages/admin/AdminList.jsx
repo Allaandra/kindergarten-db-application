@@ -17,33 +17,41 @@ const AdminList = ({ user, type }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Довідники
+  // Списки для выпадающих меню
   const [educatorsList, setEducatorsList] = useState([]);
   const [positionsList, setPositionsList] = useState([]); 
   const [groupsList, setGroupsList] = useState([]); 
   const [relativesList, setRelativesList] = useState([]);
-  const [activitiesList, setActivitiesList] = useState([]); 
-  const [dishesList, setDishesList] = useState([]);       
+  
+  // Списки для новых разделов
+  const [activitiesList, setActivitiesList] = useState([]); // Расписание
+  const [dishesList, setDishesList] = useState([]);       // Меню
 
   const [filterGroupId, setFilterGroupId] = useState(null);
   const [isModalOpen, setModalOpen] = useState(false);
   const [viewParents, setViewParents] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
+  // Единый стейт формы
   const [formData, setFormData] = useState({
+    // Старые поля
     name: '', ageCategory: 'Молодша (3-4 роки)', maxCapacity: 20, educatorId: "",
     firstName: '', lastName: '', patronymic: '', phone: '+380', address: '', 
     positionId: '', dbUsername: '', password: '', birthDate: '', groupId: "",
     relatives: [{ relativeId: "", type: "Мати" }],
+    
+    // Новые поля (Расписание, Блюда, Меню)
     activityId: "", day: "Понеділок", time: "09:00",
     calories: "", date: "", breakfastId: "", lunchId: "", snackId: "", dinnerId: ""
   });
 
+  // Настройки для каждого типа страницы
   const config = {
     groups:    { title: 'Групи', btn: 'Додати групу', endpoint: '/api/groups' },
     employees: { title: 'Співробітники', btn: 'Додати співробітника', endpoint: '/api/employees' },
     children:  { title: 'Діти', btn: 'Зарахувати дитину', endpoint: '/api/children' },
     relatives: { title: 'Батьки', btn: 'Додати родича', endpoint: '/api/relatives' },
+    // Новые
     schedule:  { title: 'Розклад занять', btn: 'Додати урок', endpoint: '/api/schedule' },
     dishes:    { title: 'Довідник страв', btn: 'Додати страву', endpoint: '/api/dishes' },
     menu:      { title: 'Меню харчування', btn: 'Скласти меню', endpoint: '/api/menu' },
@@ -51,7 +59,7 @@ const AdminList = ({ user, type }) => {
 
   const auth = { username: user.username, password: user.password };
 
-  // 1. ЗАВАНТАЖЕННЯ ДАНИХ
+  // 1. ЗАГРУЗКА ДАННЫХ
   const fetchData = async () => {
     if (!type || !config) return;
     setLoading(true);
@@ -62,7 +70,7 @@ const AdminList = ({ user, type }) => {
     finally { setLoading(false); }
   };
 
-  // 2. ЗАВАНТАЖЕННЯ ДОВІДНИКІВ
+  // 2. ЗАГРУЗКА СПИСКОВ (HELPERS)
   useEffect(() => {
     const fetchHelpers = async () => {
       try {
@@ -98,6 +106,7 @@ const AdminList = ({ user, type }) => {
     fetchHelpers();
   }, [type]);
 
+  // Фильтр для детей
   useEffect(() => {
     if (location.state?.filterGroupId && type === 'children') {
       setFilterGroupId(location.state.filterGroupId);
@@ -105,7 +114,7 @@ const AdminList = ({ user, type }) => {
   }, [location.state, type]);
 
 
-  // --- ОБРОБНИКИ ---
+  // --- ОБРАБОТЧИКИ ---
 
   const handleEdit = (row) => {
     if (type === 'schedule' || type === 'menu') {
@@ -168,17 +177,18 @@ const AdminList = ({ user, type }) => {
     return val;
   };
 
-  // --- ЛОГІКА ВІДОБРАЖЕННЯ ---
+  // --- ЛОГИКА ОТОБРАЖЕНИЯ ---
   const filteredData = (type === 'children' && filterGroupId) 
     ? data.filter(i => i.group_id === filterGroupId) 
     : data;
 
-  // Визначаємо ключі для старих таблиць
+  // Определяем ключи для "старых" таблиц
   let visibleKeys = [];
   if (!['schedule', 'dishes', 'menu'].includes(type)) {
       visibleKeys = filteredData.length > 0 
         ? Object.keys(filteredData[0]).filter(key => !HIDDEN_FIELDS.includes(key)) 
         : [];
+      // Принудительно добавляем кнопку родителей для детей
       if (type === 'children' && !visibleKeys.includes('parents_btn')) visibleKeys.push('parents_btn');
   }
 
@@ -186,6 +196,7 @@ const AdminList = ({ user, type }) => {
     <div className="admin-page" style={{display: 'block'}}>
       <div className="admin-card-table">
         
+        {/* ШАПКА ТАБЛИЦЫ */}
         <div className="list-header">
           <div style={{display: 'flex', alignItems: 'center', gap: '20px'}}>
             <Link to="/admin" className="back-btn">⬅ Назад</Link>
@@ -199,32 +210,37 @@ const AdminList = ({ user, type }) => {
           </button>
         </div>
 
+        {/* ТАБЛИЦА */}
         {loading ? <p>Завантаження...</p> : (
           <div style={{overflowX: 'auto'}}>
             <table className="styled-table">
               <thead>
                 <tr>
-                    {/* ЗАГОЛОВКИ */}
+                    {/* ЗАГОЛОВКИ СТАРЫХ ТАБЛИЦ */}
                     {!['schedule', 'dishes', 'menu'].includes(type) && visibleKeys.map(key => (
                         <th key={key}>{COLUMN_MAP[key] || key.toUpperCase()}</th>
                     ))}
+                    
+                    {/* ЗАГОЛОВКИ НОВЫХ ТАБЛИЦ */}
                     {type === 'schedule' && <><th>ГРУПА</th><th>ДЕНЬ</th><th>ЧАС</th><th>ЗАНЯТТЯ</th></>}
                     {type === 'dishes' && <><th>НАЗВА</th><th>КАЛОРІЇ</th></>}
                     {type === 'menu' && <><th>ДАТА</th><th>ГРУПА</th><th>СНІДАНОК</th><th>ОБІД</th><th>ПОЛУДЕНОК</th><th>ВЕЧЕРЯ</th></>}
-                    <th style={{textAlign: 'right'}}>ДІЇ</th>
+                    
+                    <th style={{textAlign: 'right', paddingRight: '55px'}}>ДІЇ</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredData.length > 0 ? filteredData.map((row, index) => (
                   <tr key={index}>
                     
-                    {/* СТАРІ ТАБЛИЦІ */}
+                    {/* ЯЧЕЙКИ СТАРЫХ ТАБЛИЦ */}
                     {!['schedule', 'dishes', 'menu'].includes(type) && visibleKeys.map((key) => {
+                        // Клик по группе -> фильтр детей
                         if (type === 'groups' && key === 'name') {
                             return <td key={key}><span onClick={() => navigate('/admin/children', { state: { filterGroupId: row.id } })} className='hyperlink-table'>{formatValue(row[key])}</span></td>;
                         }
                         
-                        // 👇 ОСЬ ТУТ МИ ПОВЕРНУЛИ ГАРНУ КНОПКУ!
+                        // Кнопка родителей (ВЕРНУЛИ КРАСИВУЮ ВЕРСИЮ)
                         if (type === 'children' && key === 'parents_btn') {
                            const count = row.relatives ? row.relatives.length : 0;
                            return (
@@ -254,7 +270,7 @@ const AdminList = ({ user, type }) => {
                         return <td key={key}>{formatValue(row[key])}</td>;
                     })}
 
-                    {/* НОВІ ТАБЛИЦІ */}
+                    {/* ЯЧЕЙКИ НОВЫХ ТАБЛИЦ */}
                     {type === 'schedule' && <>
                         <td>{row.group_name}</td>
                         <td>{row.day_of_week}</td>
@@ -286,17 +302,22 @@ const AdminList = ({ user, type }) => {
         )}
       </div>
 
+      {/* МОДАЛКА */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3 className="modal-title">{editingId ? 'Редагування' : config?.btn}</h3>
             <form onSubmit={handleSubmit}>
               
+              {/* СТАРЫЕ ФОРМЫ */}
               {type === 'groups' && <GroupForm formData={formData} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} educatorsList={educatorsList} />}
               {type === 'employees' && <EmployeeForm formData={formData} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} positionsList={positionsList} editingId={editingId} />}
               {type === 'relatives' && <RelativeForm formData={formData} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} editingId={editingId} />}
               {type === 'children' && <ChildForm formData={formData} setFormData={setFormData} onChange={e => setFormData({...formData, [e.target.name]: e.target.value})} groupsList={groupsList} relativesList={relativesList} />}
 
+              {/* НОВЫЕ ФОРМЫ (ВСТРОЕННЫЕ) */}
+              
+              {/* РАСПИСАНИЕ */}
               {type === 'schedule' && (
                   <>
                     <div className="form-group"><label>Група</label><select name="groupId" value={formData.groupId} onChange={e => setFormData({...formData, groupId: e.target.value})} required><option value="">Оберіть...</option>{groupsList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></div>
@@ -306,6 +327,7 @@ const AdminList = ({ user, type }) => {
                   </>
               )}
 
+              {/* БЛЮДА */}
               {type === 'dishes' && (
                   <>
                     <div className="form-group"><label>Назва</label><input type="text" name="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required style={{width: '100%', padding: '10px'}} /></div>
@@ -313,6 +335,7 @@ const AdminList = ({ user, type }) => {
                   </>
               )}
 
+              {/* МЕНЮ */}
               {type === 'menu' && (
                   <>
                     <div className="form-group"><label>Дата</label><input type="date" name="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required style={{width: '100%', padding: '10px'}} /></div>
@@ -333,6 +356,7 @@ const AdminList = ({ user, type }) => {
         </div>
       )}
 
+      {/* МОДАЛКА ПРОСМОТРА РОДИТЕЛЕЙ */}
       {viewParents && (
          <div className="modal-overlay" onClick={() => setViewParents(null)}><div className="modal-content"><h3 className="modal-title">Батьки</h3>{viewParents.map((item,i)=><div key={i} style={{borderBottom:'1px solid #eee', padding:'10px'}}><b>{item.type}</b>: {item.person ? `${item.person.last_name} ${item.person.first_name} (${item.person.phone})` : 'Видалено'}</div>)}<button className="btn-pink" style={{marginTop:'20px', width:'100%'}} onClick={() => setViewParents(null)}>Закрити</button></div></div>
       )}
