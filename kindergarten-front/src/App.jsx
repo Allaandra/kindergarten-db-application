@@ -176,6 +176,7 @@ function App() {
         <Route path="/admin/dishes" element={<ProtectedRoute><AdminList user={user} type="dishes" /></ProtectedRoute>} />
         <Route path="/admin/menu" element={<ProtectedRoute><AdminList user={user} type="menu" /></ProtectedRoute>} />
         <Route path="/admin/attendance" element={<ProtectedRoute><AdminList user={user} type="attendance" /></ProtectedRoute>} />
+        <Route path="/admin/medical" element={<ProtectedRoute><AdminList user={user} type="medical" /></ProtectedRoute>} />
         
 
         {/* Список груп */}
@@ -203,7 +204,7 @@ function App() {
         <Route path="/nurse" element={<ProtectedRoute><NurseDashboard user={user} onLogout={handleLogout} type="menu" /></ProtectedRoute>} />
         
         {/* Медичні карти */}
-        <Route path="/nurse/medical" element={<ProtectedRoute><NurseDashboard user={user} onLogout={handleLogout} type="medical" /></ProtectedRoute>} />
+        <Route path="/nurse/medical" element={<ProtectedRoute><AdminList user={user} type="medical" /></ProtectedRoute>} />
 
         {/* ПЕРЕВИКОРИСТАННЯ АДМІНСЬКИХ СТОРІНОК ДЛЯ МЕДСЕСТРИ */}
         <Route path="/nurse/menu" element={<ProtectedRoute><AdminList user={user} type="menu" /></ProtectedRoute>} />

@@ -24,10 +24,12 @@ const AdminList = ({ user, type }) => {
   const [relativesList, setRelativesList] = useState([]);
   const [activitiesList, setActivitiesList] = useState([]); 
   const [dishesList, setDishesList] = useState([]);       
+  // 👇 НОВІ ДОВІДНИКИ ДЛЯ МЕДИЦИНИ
+  const [allChildrenList, setAllChildrenList] = useState([]);
+  const [medicalTypes, setMedicalTypes] = useState([]);
 
   // Фильтры
   const [filterGroupId, setFilterGroupId] = useState(null);
-  // Дата по умолчанию - сегодня
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [isModalOpen, setModalOpen] = useState(false);
@@ -40,7 +42,9 @@ const AdminList = ({ user, type }) => {
     positionId: '', dbUsername: '', password: '', birthDate: '', groupId: "",
     relatives: [{ relativeId: "", type: "Мати" }],
     activityId: "", day: "Понеділок", time: "09:00",
-    calories: "", date: "", breakfastId: "", lunchId: "", snackId: "", dinnerId: ""
+    calories: "", date: "", breakfastId: "", lunchId: "", snackId: "", dinnerId: "",
+    // 👇 ПОЛЯ ДЛЯ МЕДКАРТИ
+    childId: "", typeId: "", description: ""
   });
 
   const config = {
@@ -51,8 +55,9 @@ const AdminList = ({ user, type }) => {
     schedule:  { title: 'Розклад занять', btn: 'Додати урок', endpoint: '/api/schedule' },
     dishes:    { title: 'Довідник страв', btn: 'Додати страву', endpoint: '/api/dishes' },
     menu:      { title: 'Меню харчування', btn: 'Скласти меню', endpoint: '/api/menu' },
-    // Журнал (кнопки нет)
-    attendance:{ title: 'Журнал відвідування', btn: '', endpoint: '/api/attendance' }
+    attendance:{ title: 'Журнал відвідування', btn: '', endpoint: '/api/attendance' },
+    // 👇 ДОДАЛИ МЕДИЧНИЙ ЖУРНАЛ (використовуємо роути медсестри, бо це одна база)
+    medical:   { title: 'Медичний журнал', btn: 'Додати запис', endpoint: '/api/nurse/records' }
   }[type];
 
   const auth = { username: user.username, password: user.password };
@@ -64,19 +69,16 @@ const AdminList = ({ user, type }) => {
     try {
       const payload = { 
           auth, 
-          // Отправляем дату и группу (если выбраны)
           date: filterDate, 
           groupId: filterGroupId 
       };
       
-      // Используем правильный endpoint
       const res = await axios.post(`http://localhost:3000${config.endpoint}`, payload);
       setData(res.data.rows);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
-  // Перезагрузка при смене даты или фильтров
   useEffect(() => {
       fetchData();
   }, [filterDate, filterGroupId, type]);
@@ -93,7 +95,6 @@ const AdminList = ({ user, type }) => {
              const res = await axios.post('http://localhost:3000/api/employees/positions', { auth });
              setPositionsList(res.data.rows);
         }
-        // Группы нужны везде, где есть списки или журнал
         if (['children', 'schedule', 'menu', 'attendance'].includes(type)) {
              const resGroups = await axios.post('http://localhost:3000/api/groups', { auth });
              setGroupsList(resGroups.data.rows);
@@ -110,6 +111,14 @@ const AdminList = ({ user, type }) => {
              const resDishes = await axios.post('http://localhost:3000/api/dishes', { auth });
              setDishesList(resDishes.data.rows);
         }
+        // 👇 ЗАВАНТАЖЕННЯ ДЛЯ МЕДИЦИНИ
+        if (type === 'medical') {
+            const resChild = await axios.post('http://localhost:3000/api/nurse/children', { auth });
+            setAllChildrenList(resChild.data.rows);
+
+            const resTypes = await axios.post('http://localhost:3000/api/nurse/types', { auth });
+            setMedicalTypes(resTypes.data.rows);
+        }
       } catch (err) { console.error(err); }
     };
     fetchHelpers();
@@ -119,7 +128,6 @@ const AdminList = ({ user, type }) => {
     if (location.state?.filterGroupId && type === 'children') {
       setFilterGroupId(location.state.filterGroupId);
     } else if (type !== 'attendance') {
-      // Для журнала фильтр не сбрасываем автоматически
       setFilterGroupId(null);
     }
   }, [location.state, type]);
@@ -128,24 +136,21 @@ const AdminList = ({ user, type }) => {
   // --- ОБРАБОТЧИКИ ---
 
   const handleEdit = (row) => {
-    // 1. Проверка на запрет редактирования
-    if (['schedule', 'menu', 'attendance'].includes(type)) {
-        alert("Редагування тут недоступне.");
+    // 1. Забороняємо редагування складних таблиць (включаючи medical)
+    if (['schedule', 'menu', 'attendance', 'medical'].includes(type)) {
+        alert("Редагування тут недоступне (тільки видалення та створення).");
         return;
     }
 
-    // 2. Сначала ставим ID
     setEditingId(row.id);
 
-    // 3. Один раз и правильно заполняем форму
     setFormData({
-        ...formData, // Берем дефолтные значения
-        ...row,      // Кидаем все, что пришло из базы (на всякий случай)
+        ...formData,
+        ...row,
         
-        // 👇 ВРУЧНУЮ ПЕРЕКЛАДЫВАЕМ ПОЛЯ (snake_case -> camelCase)
         firstName: row.first_name || '',
         lastName: row.last_name || '',
-        patronymic: row.patronymic || '', // Не забудь отчество
+        patronymic: row.patronymic || '',
         phone: row.phone || '+380',
         
         educatorId: row.educator_id || "",
@@ -156,16 +161,13 @@ const AdminList = ({ user, type }) => {
         ageCategory: row.age_category || formData.ageCategory,
         maxCapacity: row.max_capacity || 20,
         
-        // Дату обрезаем, если она есть
         birthDate: row.birthday_date ? String(row.birthday_date).substring(0, 10) : '',
         
-        // Родители
         relatives: (row.relatives && row.relatives.length > 0) 
             ? row.relatives 
             : [{ relativeId: "", type: "Мати" }]
     });
 
-    // 4. Открываем модалку
     setModalOpen(true);
   };
 
@@ -178,13 +180,15 @@ const AdminList = ({ user, type }) => {
         positionId: '', dbUsername: '', password: '', birthDate: '', groupId: "",
         relatives: [{ relativeId: "", type: "Мати" }],
         activityId: "", day: "Понеділок", time: "09:00",
-        calories: "", date: "", breakfastId: "", lunchId: "", snackId: "", dinnerId: ""
+        calories: "", date: "", breakfastId: "", lunchId: "", snackId: "", dinnerId: "",
+        childId: "", typeId: "", description: ""
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const action = editingId ? '/update' : (['schedule','menu','dishes'].includes(type) ? '/add' : '/create');
+    // Для schedule, menu, dishes та medical використовуємо /add
+    const action = editingId ? '/update' : (['schedule','menu','dishes', 'medical'].includes(type) ? '/add' : '/create');
     const url = `${config.endpoint}${action}`;
 
     try {
@@ -226,7 +230,7 @@ const AdminList = ({ user, type }) => {
     : data;
 
   let visibleKeys = [];
-  if (!['schedule', 'dishes', 'menu', 'attendance'].includes(type)) {
+  if (!['schedule', 'dishes', 'menu', 'attendance', 'medical'].includes(type)) {
       visibleKeys = filteredData.length > 0 
         ? Object.keys(filteredData[0]).filter(key => !HIDDEN_FIELDS.includes(key)) 
         : [];
@@ -285,17 +289,17 @@ const AdminList = ({ user, type }) => {
               <thead>
                 <tr>
                     {/* СТАРЫЕ */}
-                    {!['schedule', 'dishes', 'menu', 'attendance'].includes(type) && visibleKeys.map(key => (
+                    {!['schedule', 'dishes', 'menu', 'attendance', 'medical'].includes(type) && visibleKeys.map(key => (
                         <th key={key}>{COLUMN_MAP[key] || key.toUpperCase()}</th>
                     ))}
                     
-                    {/* НОВЫЕ (Включая Attendance) */}
+                    {/* НОВЫЕ */}
                     {type === 'schedule' && <><th>ГРУПА</th><th>ДЕНЬ</th><th>ЧАС</th><th>ЗАНЯТТЯ</th></>}
                     {type === 'dishes' && <><th>НАЗВА</th><th>КАЛОРІЇ</th></>}
                     {type === 'menu' && <><th>ДАТА</th><th>ГРУПА</th><th>СНІДАНОК</th><th>ОБІД</th><th>ПОЛУДЕНОК</th><th>ВЕЧЕРЯ</th></>}
-                    
-                    {/* 👇 ВОТ ЭТО МЫ ДОБАВИЛИ */}
                     {type === 'attendance' && <><th>ПІБ ДИТИНИ</th><th>ГРУПА</th><th>СТАТУС</th><th>ПРИЧИНА</th></>}
+                    {/* 👇 ЗАГОЛОВКИ МЕДИЦИНИ */}
+                    {type === 'medical' && <><th>ДАТА</th><th>ДИТИНА</th><th>ТИП</th><th>ОПИС</th></>}
                     
                     {/* Скрываем колонку действий для журнала */}
                     {type !== 'attendance' && <th style={{textAlign: 'right', paddingRight: '55px'}}>ДІЇ</th>}
@@ -306,7 +310,7 @@ const AdminList = ({ user, type }) => {
                   <tr key={index}>
                     
                     {/* СТАРЫЕ ЯЧЕЙКИ */}
-                    {!['schedule', 'dishes', 'menu', 'attendance'].includes(type) && visibleKeys.map((key) => {
+                    {!['schedule', 'dishes', 'menu', 'attendance', 'medical'].includes(type) && visibleKeys.map((key) => {
                         if (type === 'groups' && key === 'name') {
                             return <td key={key}><span onClick={() => navigate('/admin/children', { state: { filterGroupId: row.id } })} className='hyperlink-table'>{formatValue(row[key])}</span></td>;
                         }
@@ -335,8 +339,6 @@ const AdminList = ({ user, type }) => {
                     {type === 'menu' && <>
                         <td>{row.date}</td><td>{row.group_name}</td><td>{row.breakfast||'-'}</td><td>{row.lunch||'-'}</td><td>{row.snack||'-'}</td><td>{row.dinner||'-'}</td>
                     </>}
-                    
-                    {/* 👇 ЯЧЕЙКИ ЖУРНАЛА */}
                     {type === 'attendance' && <>
                         <td style={{fontWeight:'bold'}}>{row.full_name}</td>
                         <td>{row.group_name}</td>
@@ -348,11 +350,22 @@ const AdminList = ({ user, type }) => {
                         </td>
                         <td>{row.reason}</td>
                     </>}
+                    {/* 👇 ЯЧЕЙКИ МЕДИЦИНИ */}
+                    {type === 'medical' && <>
+                        <td>{row.record_date}</td>
+                        <td style={{fontWeight:'bold'}}>{row.child_name}</td>
+                        <td>
+                            <span style={{padding:'5px 10px', background:'#fce4ec', color:'#ad1457', borderRadius:'15px', fontSize:'12px', fontWeight:'bold'}}>
+                                {row.type_name}
+                            </span>
+                        </td>
+                        <td>{row.description}</td>
+                    </>}
 
-                    {/* КНОПКИ ДЕЙСТВИЙ (Скрыты для журнала) */}
+                    {/* КНОПКИ ДЕЙСТВИЙ */}
                     {type !== 'attendance' && (
                         <td style={{textAlign: 'right'}}>
-                            {!['schedule', 'menu'].includes(type) && <span className="action-link" onClick={() => handleEdit(row)}>Ред.</span>}
+                            {!['schedule', 'menu', 'medical'].includes(type) && <span className="action-link" onClick={() => handleEdit(row)}>Ред.</span>}
                             <span className="action-link delete" onClick={() => handleDelete(row.id)}>Вид.</span>
                         </td>
                     )}
@@ -384,6 +397,36 @@ const AdminList = ({ user, type }) => {
               {type === 'menu' && (
                   <><div className="form-group"><label>Дата</label><input type="date" name="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required style={{width: '100%', padding: '10px'}} /></div><div className="form-group"><label>Група</label><select name="groupId" value={formData.groupId} onChange={e => setFormData({...formData, groupId: e.target.value})} required><option value="">Оберіть групу</option>{groupsList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></div><div className="form-group"><label>Сніданок</label><select name="breakfastId" value={formData.breakfastId} onChange={e => setFormData({...formData, breakfastId: e.target.value})}><option value="">--</option>{dishesList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="form-group"><label>Обід</label><select name="lunchId" value={formData.lunchId} onChange={e => setFormData({...formData, lunchId: e.target.value})}><option value="">--</option>{dishesList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="form-group"><label>Полуденок</label><select name="snackId" value={formData.snackId} onChange={e => setFormData({...formData, snackId: e.target.value})}><option value="">--</option>{dishesList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div><div className="form-group"><label>Вечеря</label><select name="dinnerId" value={formData.dinnerId} onChange={e => setFormData({...formData, dinnerId: e.target.value})}><option value="">--</option>{dishesList.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div></>
               )}
+              {/* 👇 ФОРМА ДЛЯ МЕДИЦИНИ */}
+              {type === 'medical' && (
+                  <>
+                    <div className="form-group">
+                        <label>Дитина</label>
+                        <select name="childId" value={formData.childId} onChange={e => setFormData({...formData, childId: e.target.value})} required>
+                            <option value="">Оберіть...</option>
+                            {allChildrenList.map(c => <option key={c.id} value={c.id}>{c.last_name} {c.first_name}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Тип запису</label>
+                        <select name="typeId" value={formData.typeId} onChange={e => setFormData({...formData, typeId: e.target.value})} required>
+                            <option value="">Оберіть...</option>
+                            {medicalTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Опис</label>
+                        <textarea 
+                            name="description" 
+                            value={formData.description} 
+                            onChange={e => setFormData({...formData, description: e.target.value})} 
+                            required 
+                            style={{width: '100%', minHeight:'80px', padding: '10px'}} 
+                        />
+                    </div>
+                  </>
+              )}
+
               <div className="modal-actions"><button type="button" className="btn-cancel" onClick={handleCloseModal}>Скасувати</button><button type="submit" className="btn-pink" style={{width: '100%'}}>Зберегти</button></div>
             </form>
           </div>

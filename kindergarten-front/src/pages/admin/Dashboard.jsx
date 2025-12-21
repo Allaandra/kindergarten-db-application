@@ -66,6 +66,11 @@ const Dashboard = ({ onLogout }) => {
             <span className="card-icon">📝</span>
             <span className="card-title">Журнал</span>
           </Link>
+
+          <Link to="/admin/medical" className="dashboard-card">
+            <span className="card-icon">🩺</span>
+            <span className="card-title">Мед. Карти</span>
+          </Link>
         </div>
 
       </div>

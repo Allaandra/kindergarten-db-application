@@ -64,7 +64,7 @@ const NurseDashboard = ({ user, onLogout, type }) => {
       {/* 1. ШАПКА (ідентична до Admin/Educator) */}
       <div className="header-row">
           <h2 className="user-greeting">
-              💅 Кабінет Медсестри
+              📝 Кабінет Медсестри
           </h2>
           <div>
             {type === 'menu' ? (
