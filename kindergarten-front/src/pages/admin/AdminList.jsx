@@ -128,12 +128,44 @@ const AdminList = ({ user, type }) => {
   // --- ОБРАБОТЧИКИ ---
 
   const handleEdit = (row) => {
+    // 1. Проверка на запрет редактирования
     if (['schedule', 'menu', 'attendance'].includes(type)) {
         alert("Редагування тут недоступне.");
         return;
     }
+
+    // 2. Сначала ставим ID
     setEditingId(row.id);
-    setFormData({ ...formData, ...row });
+
+    // 3. Один раз и правильно заполняем форму
+    setFormData({
+        ...formData, // Берем дефолтные значения
+        ...row,      // Кидаем все, что пришло из базы (на всякий случай)
+        
+        // 👇 ВРУЧНУЮ ПЕРЕКЛАДЫВАЕМ ПОЛЯ (snake_case -> camelCase)
+        firstName: row.first_name || '',
+        lastName: row.last_name || '',
+        patronymic: row.patronymic || '', // Не забудь отчество
+        phone: row.phone || '+380',
+        
+        educatorId: row.educator_id || "",
+        positionId: row.position_id || "",
+        groupId: row.group_id || "",
+        dbUsername: row.db_username || "",
+        
+        ageCategory: row.age_category || formData.ageCategory,
+        maxCapacity: row.max_capacity || 20,
+        
+        // Дату обрезаем, если она есть
+        birthDate: row.birthday_date ? String(row.birthday_date).substring(0, 10) : '',
+        
+        // Родители
+        relatives: (row.relatives && row.relatives.length > 0) 
+            ? row.relatives 
+            : [{ relativeId: "", type: "Мати" }]
+    });
+
+    // 4. Открываем модалку
     setModalOpen(true);
   };
 
