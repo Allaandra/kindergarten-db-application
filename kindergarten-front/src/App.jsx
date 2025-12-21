@@ -7,6 +7,7 @@ import Dashboard from './pages/admin/Dashboard';
 import AdminList from './pages/admin/AdminList';
 import EducatorDashboard from './pages/educator/EducatorDashboard';
 import NurseDashboard from './pages/nurse/NurseDashboard';
+import ParentDashboard from './pages/parent/ParentDashboard';
 
 // Імпорт стилів
 import './pages/admin/styles/Admin.css';
@@ -83,6 +84,11 @@ function App() {
         return <div>⛔ Тільки для Адміністратора</div>;
     }
 
+    if (user.role === 'role_parent') {
+      if (window.location.pathname.startsWith('/parent')) return children;
+      return <div>⛔ Доступ заборонено (Це для батьків)</div>;
+    }     
+
     // --- ЛОГІКА ДЛЯ АДМІНІВ ---
     const isMainAdmin = user.username === 'admin_user'; 
     const isRoleAdmin = user.role === 'role_admin';     
@@ -117,6 +123,8 @@ function App() {
             
             // 👇 ДОБАВИЛИ ЭТУ ПРОВЕРКУ: Если медсестра -> /nurse
             user.role === 'role_nurse' ? <Navigate to="/nurse" replace /> :
+            
+            user.role === 'role_parent' ? <Navigate to="/parent" replace /> :
             
             // Иначе (админ) -> /admin
             <Navigate to="/admin" replace />
@@ -209,6 +217,9 @@ function App() {
         {/* ПЕРЕВИКОРИСТАННЯ АДМІНСЬКИХ СТОРІНОК ДЛЯ МЕДСЕСТРИ */}
         <Route path="/nurse/menu" element={<ProtectedRoute><AdminList user={user} type="menu" /></ProtectedRoute>} />
         <Route path="/nurse/dishes" element={<ProtectedRoute><AdminList user={user} type="dishes" /></ProtectedRoute>} />
+
+        {/* Кабінет Батьків */}
+        <Route path="/parent" element={<ProtectedRoute><ParentDashboard user={user} onLogout={handleLogout} /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" />} />
 

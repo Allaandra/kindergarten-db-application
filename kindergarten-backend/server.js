@@ -26,6 +26,8 @@ app.use('/api/educator', require('./src/routes/educatorRoutes'));
 
 app.use('/api/nurse', require('./src/routes/nurseRoutes'));
 
+app.use('/api/parent', require('./src/routes/parentRoutes'));
+
 // Запуск
 const PORT = 3000;
 app.listen(PORT, () => {
