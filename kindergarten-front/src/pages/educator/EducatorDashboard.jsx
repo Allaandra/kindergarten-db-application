@@ -14,7 +14,6 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
   // --- ЗАВАНТАЖЕННЯ ДАНИХ ---
   useEffect(() => {
     const fetchData = async () => {
-        // 1. Якщо це меню - нічого вантажити не треба
         if (type === 'menu') return;
 
         setLoading(true);
@@ -22,7 +21,6 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
             let url = '';
             let payload = { auth };
 
-            // 2. Визначаємо URL
             if (type === 'groups') {
                 url = 'http://localhost:3000/api/educator/my-groups';
             } 
@@ -34,15 +32,12 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
                 url = 'http://localhost:3000/api/educator/schedule';
             }
 
-            // 🛑 ЗАХИСТ: Якщо url залишився пустим (не співпав type), зупиняємось!
-            // Саме це прибере твою помилку 404 на localhost:5173
             if (!url) {
                 console.warn(`Увага! Невідомий type: ${type}. Запит скасовано.`);
                 setLoading(false);
                 return;
             }
 
-            // 3. Робимо запит
             const res = await axios.post(url, payload);
 
             if (type === 'groups') {
@@ -62,7 +57,6 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
 
         } catch (err) {
             console.error("Помилка запиту:", err);
-            // Показуємо alert, тільки якщо це не помилка скасування
             if (err.response) {
                 alert(`Помилка сервера: ${err.response.data.error || err.message}`);
             }
@@ -103,7 +97,7 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
   return (
     <div style={{minHeight: '100vh', background: '#e3f2fd', fontFamily: 'Arial, sans-serif'}}>
       
-      {/* --- ШАПКА (Стиль як в адмінці) --- */}
+      {/* --- ШАПКА --- */}
       <div style={{
           background: 'white', 
           padding: '20px 40px', 
@@ -114,7 +108,7 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
           borderBottom: '1px solid #eee'
       }}>
           
-          {/* ЛІВОРУЧ: Заголовок з синьою лінією знизу (як user-greeting в Admin.css) */}
+          {/* ЛІВОРУЧ: Заголовок */}
           <h2 style={{
               margin: 0, 
               color: '#34495e', 
@@ -129,10 +123,9 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
               {type === 'schedule' && '📅 Мій Розклад'}
           </h2>
 
-          {/* ПРАВОРУЧ: Кнопки */}
+          {/* ПРАВОРУЧ: Кнопки (ОНОВЛЕНО) */}
           <div>
             {type === 'menu' ? (
-                // Кнопка ВИЙТИ (Стиль btn-pink, але світліший фон, як в Dashboard.jsx)
                 <button 
                     onClick={onLogout} 
                     className="btn-pink"
@@ -142,9 +135,12 @@ const EducatorDashboard = ({ user, onLogout, type }) => {
                     Вийти
                 </button>
             ) : (
-                // Кнопка НАЗАД
-                <Link to="/educator" className="back-btn" >
-                    ⬅ На головну
+                // 👇 ТУТ ЗМІНА: Визначаємо куди повертатись
+                <Link 
+                    to={type === 'attendance' ? "/educator/groups" : "/educator"} 
+                    className="back-btn"
+                >
+                    {type === 'attendance' ? '⬅ До списку груп' : '⬅ На головну'}
                 </Link>
             )}
           </div>

@@ -17,6 +17,7 @@ app.use('/api/groups', require('./src/routes/groupRoutes'));
 app.use('/api/employees', require('./src/routes/employeeRoutes'));
 app.use('/api/children', require('./src/routes/childRoutes'));
 app.use('/api/relatives', require('./src/routes/relativeRoutes'));
+app.use('/api/schedule', require('./src/routes/scheduleRoutes'));
 
 app.use('/api/educator', require('./src/routes/educatorRoutes'));
 

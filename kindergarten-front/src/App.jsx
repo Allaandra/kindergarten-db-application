@@ -162,6 +162,7 @@ function App() {
         <Route path="/admin/employees" element={<ProtectedRoute><AdminList user={user} type="employees" /></ProtectedRoute>} />
         <Route path="/admin/relatives" element={<ProtectedRoute><AdminList user={user} type="relatives" /></ProtectedRoute>} />
         <Route path="/admin/children" element={<ProtectedRoute><AdminList user={user} type="children" /></ProtectedRoute>} />
+        <Route path="/admin/schedule" element={<ProtectedRoute><AdminList user={user} type="schedule" /></ProtectedRoute>} />
 
         {/* Список груп */}
         <Route path="/educator/groups" element={
