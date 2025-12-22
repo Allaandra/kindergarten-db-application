@@ -71,16 +71,6 @@ const NurseDashboard = ({ user, onLogout, type }) => {
                 <button 
                     onClick={onLogout} 
                     className="btn-pink"
-                    // Додаємо інлайн стиль для кнопки виходу, як у Вихователя, щоб була рожевою
-                    style={{
-                        background: '#ffcccc', 
-                        color: '#c0392b', 
-                        border: 'none', 
-                        padding: '10px 25px', 
-                        borderRadius: '25px', 
-                        cursor: 'pointer', 
-                        fontWeight: 'bold'
-                    }}
                     onMouseOver={(e) => e.target.style.background = '#ffb3b3'}
                     onMouseOut={(e) => e.target.style.background = '#ffcccc'}
                 >
